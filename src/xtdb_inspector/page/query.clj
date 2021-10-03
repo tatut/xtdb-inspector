@@ -91,7 +91,7 @@
      [:div
       [::h/for [js codemirror-js]
        [:script {:src js}]]
-      [:link {:rel "stylesheet" :href codemirror-css #_"/xtdb-inspector-unreset.css"}]
+      [:link {:rel "stylesheet" :href codemirror-css}]
       [:h2 "Query"]
       [:div.unreset
        [:textarea#query
