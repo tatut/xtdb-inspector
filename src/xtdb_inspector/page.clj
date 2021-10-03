@@ -7,7 +7,7 @@
   (h/html
    [:html
     [:head
-     [:link {:rel "stylesheet" :href "/styles.css"}]
+     [:link {:rel "stylesheet" :href "/xtdb-inspector.css"}]
      (h/live-client-script "/__ripley-live")]
     [:body
      (page-content-fn)]]))
