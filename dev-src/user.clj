@@ -7,7 +7,8 @@
 
 (defn start []
   (println "Starting dev instance with in-memory XTDB in port 3000")
-  (swap! xtdb #(or % (xt/start-node {})))
+  (swap! xtdb #(or % (xt/start-node {:xtdb.metrics/metrics {}
+                                     :xtdb-inspector.metrics/reporter {}})))
   (swap! server
          (fn [old-server]
            (when old-server
