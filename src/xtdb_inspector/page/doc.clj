@@ -11,7 +11,6 @@
         db (xt/db xtdb-node)
         entity (xt/entity db id)
         id-str (pr-str id)]
-    (println "ID: " (pr-str id) "; entity: " (pr-str entity))
     (h/html
      [:div
       [:h3 id-str]
@@ -22,8 +21,8 @@
                        link (when (id/valid-id? db v)
                               (str "/doc/" (id/doc-id-param v)))]]
         [:tr
-         [:td key-name]
-         [:td
+         [:td.px-2.py-2.font-semibold key-name]
+         [:td.px-2.py-2
           [::h/if link
-           [:a {:href link} value]
+           [:a.underline.bg-blue-200 {:href link} value]
            value]]]]]])))
