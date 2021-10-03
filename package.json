@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "postcss-cli": "^8.3.1",
+    "tailwindcss": "^2.2.7"
+  },
+  "scripts": {
+    "tailwind": "tailwindcss -i resources/styles.css -o resources/public/styles.css --watch"
+  }
+}
