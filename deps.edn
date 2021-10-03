@@ -1,6 +1,6 @@
 {:paths ["src" "resources"]
  :deps {ripley/ripley {:git/url "https://github.com/tatut/ripley.git"
-                        :sha "b4357d9dafe347ba3cf79efb2a156fe75354a428"}
+                       :sha "0d8221844bd4ad8c27ebcef1c0876588ab89a256"}
 
         compojure/compojure {:mvn/version "1.6.1"}
         http-kit/http-kit {:mvn/version "2.5.3"}

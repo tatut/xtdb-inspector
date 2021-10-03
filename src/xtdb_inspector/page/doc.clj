@@ -2,6 +2,7 @@
   "Page that displays a single document."
   (:require [ripley.html :as h]
             [xtdb-inspector.id :as id]
+            [xtdb-inspector.ui :as ui]
             [xtdb.api :as xt]
             [ripley.live.source :as source]
             [clojure.set :as set]))
@@ -35,8 +36,7 @@
                (conj acc history-entry)
                history)))))
 
-(defn format-tx-time [tx-time]
-  (.format (java.text.SimpleDateFormat. "yyyy-MM-dd HH:mm:ss.SSS") tx-time))
+
 
 (defn entity-history [db id ]
   (let [history (xt/entity-history db id :asc {:with-docs? true})
@@ -46,7 +46,7 @@
      [:div.entity-history.pt-4
       [:h3 "History"]
       [::h/for [{:keys [time changes] :as chg}  changes
-                :let [time (format-tx-time time)]]
+                :let [time (ui/format-inst time)]]
        [:div.history-entry
         [:hr]
         [:div.font-bold time
@@ -78,16 +78,11 @@
       [:h3 "Document (" [:span.font-mono id-str] ")"]
       [:table.font-mono {:class "w-9/12"}
        [::h/for [[k v] (dissoc entity :xt/id)
-                 :let [key-name (pr-str k)
-                       value (pr-str v)
-                       link (when (id/valid-id? db v)
-                              (str "/doc/" (id/doc-id-param v)))]]
+                 :let [key-name (pr-str k)]]
         [:tr.hover:bg-gray-100
          [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
          [:td.px-2.py-2
-          [::h/if link
-           [:a.underline.bg-blue-200 {:href link} value]
-           value]]]]]
+          (ui/format-value db v)]]]]
       [::h/live show-history-source
        (fn [show?]
          (h/html

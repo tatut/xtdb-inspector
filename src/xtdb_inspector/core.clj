@@ -6,6 +6,7 @@
             [compojure.route :as route]
             [xtdb-inspector.page :as page]
             [xtdb-inspector.page.doc :as page.doc]
+            [xtdb-inspector.page.query :as page.query]
             [ripley.live.context :as context]))
 
 
@@ -21,6 +22,8 @@
      (context/connection-handler "/__ripley-live" :ping-interval 45)
      (GET "/doc/:doc-id" req
           (page ctx req #'page.doc/render))
+     (GET "/query" req
+          (page ctx req #'page.query/render))
      (route/resources "/"))))
 
 
