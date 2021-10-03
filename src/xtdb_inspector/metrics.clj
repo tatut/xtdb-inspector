@@ -15,7 +15,8 @@
 (def ^:private executor (Executors/newScheduledThreadPool 1))
 
 (defn- report [^MetricRegistry registry]
-  {:gauges
+  {:updated (java.util.Date.)
+   :gauges
    (into {}
          (let [g (.getGauges registry)]
            (for [k (keys g)
@@ -78,10 +79,17 @@
          [:td (fmt (:min15 m))]
          [:td.font-semibold c]]]]])))
 
+
 (defn metrics-ui [ctx]
   (let [ms (source/source metrics)]
     (h/html
      [:div.metrics.flex-col.bg-gray-50.rounded-md.border-2.border-black.m-3.p-3.text-sm
       [:div
        [::h/live (source/c= (:meters %ms))
-        (partial render-meters "Indexed" idx-meters-to-render)]]])))
+        (partial render-meters "Indexed" idx-meters-to-render)]
+
+       [:div {:class "px-4 py-2 mt-4 text-lg text-gray-900 bg-gray-200 rounded-lg sm:mt-0 hover:text-gray-900 focus:text-gray-900 hover:bg-gray-300"}
+        [::h/live (source/c= (get-in %ms [:gauges "xtdb.query.currently-running"]))
+         #(h/html [:span
+                   {:class "badge mb-3 bg-red-800 rounded-full px-2 py-1 text-center object-right-top text-white text-sm mr-1"} %])]
+        "running queries"]]])))

@@ -59,7 +59,7 @@
                                    (pr-str (::from val)))
                          new-val (when (not= ::no-value (::to val))
                                    (pr-str (::to val)))]]
-          [:tr
+          [:tr.hover:bg-gray-100
            [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
            [:td.px-2.py-2
             [::h/when old-val
@@ -82,7 +82,7 @@
                        value (pr-str v)
                        link (when (id/valid-id? db v)
                               (str "/doc/" (id/doc-id-param v)))]]
-        [:tr
+        [:tr.hover:bg-gray-100
          [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
          [:td.px-2.py-2
           [::h/if link
