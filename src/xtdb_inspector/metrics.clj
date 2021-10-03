@@ -1,7 +1,9 @@
 (ns xtdb-inspector.metrics
   "Metrics reporting UI"
   (:require [xtdb.metrics :as metrics]
-            [xtdb.system :as sys])
+            [xtdb.system :as sys]
+            [ripley.html :as h]
+            [ripley.live.source :as source])
   (:import (com.codahale.metrics MetricRegistry Gauge Meter)
            (java.util.concurrent Executors ScheduledExecutorService TimeUnit
                                  Future)))
@@ -42,3 +44,44 @@
       (close [_]
         (.cancel task true)
         (reset! metrics {})))))
+
+
+;;;;;;;;;;;
+;; UI for showing metrics, will listen to the atom
+;; and update all metrics live to connected clients.
+;;
+
+(def idx-meters-to-render
+  [["bytes" "xtdb.index-store.indexed-bytes"]
+   ["attr vals" "xtdb.index-store.indexed-avs"]
+   ["docs" "xtdb.index-store.indexed-docs"]])
+
+(defn render-meters [title meters-to-render meter-values]
+  (letfn [(fmt [n]
+            (h/dyn! (format "%.1f" n)))]
+    (h/html
+     [:div.meters
+      [:table.w-full.text-right
+       [:tr.bg-gray-300
+        [:td title]
+        [:td "1m"]
+        [:td "5m"]
+        [:td "15m"]
+        [:td "cnt"]]
+       [::h/for [[label meter-name] meters-to-render
+                 :let [m (get meter-values meter-name)
+                       c (str (:count m))]]
+        [:tr
+         [:td label]
+         [:td (fmt (:min1 m))]
+         [:td (fmt (:min5 m))]
+         [:td (fmt (:min15 m))]
+         [:td.font-semibold c]]]]])))
+
+(defn metrics-ui [ctx]
+  (let [ms (source/source metrics)]
+    (h/html
+     [:div.metrics.flex-col.bg-gray-50.rounded-md.border-2.border-black.m-3.p-3.text-sm
+      [:div
+       [::h/live (source/c= (:meters %ms))
+        (partial render-meters "Indexed" idx-meters-to-render)]]])))
