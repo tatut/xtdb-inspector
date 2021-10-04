@@ -40,7 +40,8 @@
 
     ;; Any edn (prefixed with _)
     (str/starts-with? doc-id "_")
-    (read-string (subs doc-id 1))
+    (binding [*read-eval* false]
+      (read-string (subs doc-id 1)))
 
     ;; Otherwise it's a string
     :else doc-id))
