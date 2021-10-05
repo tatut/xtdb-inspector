@@ -37,6 +37,12 @@
                history)))))
 
 
+(defn attr-val-row [attr val-fn]
+  (h/html
+   [:tr.hover:bg-gray-100
+    [:td.px-2.py-2.font-semibold {:class "w-1/3"} attr]
+    [:td.px-2.py-2
+     (val-fn)]]))
 
 (defn entity-history [db id ]
   (let [history (xt/entity-history db id :asc {:with-docs? true})
@@ -59,13 +65,50 @@
                                    (pr-str (::from val)))
                          new-val (when (not= ::no-value (::to val))
                                    (pr-str (::to val)))]]
-          [:tr.hover:bg-gray-100
-           [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
-           [:td.px-2.py-2
-            [::h/when old-val
-             [:div.line-through old-val]]
-            [::h/when new-val
-             [:div new-val]]]]]]]]])))
+          (attr-val-row
+           key-name
+           (fn []
+             (h/html
+              [:span
+               [::h/when old-val
+                [:div.line-through old-val]]
+               [::h/when new-val
+                [:div new-val]]])))]]]]])))
+
+(defn links-to [xtdb id]
+  (let [attrs
+        ;; PENDING: we could also keep a set of all
+        ;; attributes of id values we encounter when
+        ;; displaying docs and persisting it.
+        ;; But perhaps this is fast enough?
+        (disj (into #{}
+                    (map key)
+                    (xt/attribute-stats xtdb))
+              :xt/id)]
+    (with-open [db (xt/open-db xtdb)]
+      (into []
+            (mapcat
+             (fn [attr]
+               (for [[from]
+                     (xt/q db {:find ['?e]
+                               :where [['?e attr 'id]]
+                               :in ['id]} id)]
+                 [attr from])))
+            attrs))))
+
+(defn render-links-to [db links]
+  (h/html
+   [:div
+    [:table.font-mono {:class "w-9/12"}
+     [:thead
+      [:tr
+       [:td "Attribute"]
+       [:td "Document"]]]
+     [:tbody
+      [::h/for [[attr from] links
+                :let [attr-name (pr-str attr)]]
+       (attr-val-row attr-name
+                     #(ui/format-value db from))]]]]))
 
 (defn render [{:keys [xtdb-node request] :as ctx}]
   (let [id (some-> request :params :doc-id id/read-doc-id)
@@ -75,14 +118,24 @@
         [show-history-source set-show-history!] (source/use-state false)]
     (h/html
      [:div
-      [:h3 "Document (" [:span.font-mono id-str] ")"]
+      [:h3.bg-gray-300 "Document   " [:span.font-mono id-str]]
       [:table.font-mono {:class "w-9/12"}
-       [::h/for [[k v] (dissoc entity :xt/id)
-                 :let [key-name (pr-str k)]]
-        [:tr.hover:bg-gray-100
-         [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
-         [:td.px-2.py-2
-          (ui/format-value db v)]]]]
+       [:thead
+        [:tr
+         [:td "Attribute"]
+         [:td "Value"]]]
+       [:tbody
+        [::h/for [[k v] (dissoc entity :xt/id)
+                  :let [key-name (pr-str k)]]
+         [:tr.hover:bg-gray-100
+          [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
+          [:td.px-2.py-2
+           (ui/format-value db v)]]]]]
+
+      [:h3.bg-gray-300 "Links from other documents"]
+      [::h/live (future (links-to xtdb-node id))
+       (partial render-links-to db)]
+
       [::h/live show-history-source
        (fn [show?]
          (h/html

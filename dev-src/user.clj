@@ -29,18 +29,27 @@
     [::xt/put {:xt/id {:foo :bar}
                :message "even deeper now"
                :number 3.1415M
-               :back-to-start :hello}]])
+               :back-to-start :hello}]
+    [::xt/put {:xt/id "thing1"
+               :name "The first thing"}]
+    [::xt/put {:xt/id "thing2"
+               :name "Another thing"}]
+    [::xt/put {:xt/id "thing3"
+               :name "Yet another thing here"}]
+    ])
 
   ;; insert some changes for testing history
   (xt/submit-tx @xtdb [[::xt/put {:xt/id :hello
                                   :greeting "hello XTDB inspector world!"
                                   :number 420.666M
                                   :link "over-there"
-                                  :new-key "this one is"}]])
+                                  :new-key "this one is"
+                                  :things ["thing2"]}]])
 
   (xt/submit-tx @xtdb [[::xt/put {:xt/id :hello
                                   :greeting "hello XTDB inspector world!"
                                   :number 42M
                                   :link "over-there"
-                                  :new-key "this one is"}]])
+                                  :new-key "this one is"
+                                  :things ["thing1" "thing3"]}]])
   )
