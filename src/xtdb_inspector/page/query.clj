@@ -71,17 +71,20 @@
             (range))]
     (mapcat
      (fn [header column-accessor]
-       (if (and (coll? header)
-                (= 'pull (first header))
-                (every? #(not= '* %) (nth header 2)))
-         ;; pull pattern that has no star, generate column for each
-         (for [k (nth header 2)]
-           {:name (name k)
-            :accessor [column-accessor k]})
+       (let [column-name (when (not (number? column-accessor))
+                           (name column-accessor))]
+         (if (and (coll? header)
+                  (= 'pull (first header))
+                  (every? #(not= '* %) (nth header 2)))
+           ;; pull pattern that has no star, generate column for each
+           (for [k (nth header 2)]
+             {:name (str (when column-name
+                           (str column-name ": ")) (name k))
+              :accessor [column-accessor k]})
 
-         ;; any other result
-         [{:name (pr-str header)
-           :accessor [column-accessor]}]))
+           ;; any other result
+           [{:name (or column-name (pr-str header))
+             :accessor [column-accessor]}])))
      (:find query) column-accessors)))
 
 (defn render-results [xtdb-node {:keys [running? results query]}]
