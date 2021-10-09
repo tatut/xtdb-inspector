@@ -573,6 +573,10 @@ video {
   margin-bottom: 0.75rem;
 }
 
+.ml-1 {
+  margin-left: 0.25rem;
+}
+
 .-ml-1 {
   margin-left: -0.25rem;
 }
@@ -684,6 +688,10 @@ video {
           animation: spin 1s linear infinite;
 }
 
+.flex-row {
+  flex-direction: row;
+}
+
 .flex-col {
   flex-direction: column;
 }
@@ -756,6 +764,10 @@ video {
 
 .p-1 {
   padding: 0.25rem;
+}
+
+.p-2 {
+  padding: 0.5rem;
 }
 
 .p-3 {

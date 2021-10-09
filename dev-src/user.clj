@@ -69,4 +69,24 @@
        :job-title job_title
        :address address}]))
 
+  ;; Insert a saved query
+  (xt/submit-tx
+   @xtdb
+   [[::xt/put {:xt/id (java.util.UUID/randomUUID)
+               :xtdb-inspector.saved-query/name "job-title counts"
+               :xtdb-inspector.saved-query/query
+               ;; Stored as text so they can have formatting and
+               ;; comments
+               (str "{:find [?jt (count ?p)] ; title and its count \n"
+                    " :where [[?p :job-title ?jt]]\n"
+                    "            ;; order most popular titles first\n"
+                    " :order-by [[(count ?p) :desc]]}")}]
+    [::xt/put {:xt/id (java.util.UUID/randomUUID)
+               :xtdb-inspector.saved-query/name "users with name"
+               :xtdb-inspector.saved-query/query
+               (str "{:find [?u (pull ?u [:first-name :last-name])]\n"
+                    " :where [[?u :first-name]]}")}]])
+
   )
+
+(defn db [] (xt/db @xtdb))

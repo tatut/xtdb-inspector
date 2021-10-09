@@ -4,7 +4,11 @@
             [ripley.live.source :as source]
             [ripley.js :as js]
             [xtdb.api :as xt]
-            [xtdb-inspector.ui :as ui]))
+            [xtdb-inspector.ui :as ui]
+            [ripley.integration.xtdb :as rx]
+            [cheshire.core :as cheshire]
+            [ripley.live.protocols :as p]
+            [ripley.impl.dynamic :as dyn]))
 
 
 (def codemirror-js
@@ -26,11 +30,10 @@
 (defn- query! [xtdb-node set-state! query-str]
   (let [{:keys [q error]} (safe-read query-str)]
     (if error
-      (do
-        (set-state! {:error? true
-                     :error-message error
-                     :running? false
-                     :results nil}))
+      (set-state! {:error? true
+                   :error-message error
+                   :running? false
+                   :results nil})
       (do
         (set-state! {:running? true
                      :error? false
@@ -108,6 +111,60 @@
               [:td
                (ui/format-value db item)]]]]]]]]))))
 
+(defn saved-queries [db]
+  (xt/q db '{:find [?e ?n]
+             :keys [id name]
+             :where [[?e :xtdb-inspector.saved-query/name ?n]]}))
+
+(defn save-query! [xtdb-node name query]
+  (let [existing-query-id (ffirst
+                           (xt/q (xt/db xtdb-node)
+                                 '{:find [?q]
+                                   :where [[?q :xtdb-inspector.saved-query/name ?n]]
+                                   :in [?n]}
+                                 name))]
+    (xt/submit-tx
+     xtdb-node
+     [[::xt/put {:xt/id (or existing-query-id (java.util.UUID/randomUUID))
+                 :xtdb-inspector.saved-query/name name
+                 :xtdb-inspector.saved-query/query query}]])))
+
+(defn saved-queries-ui [xtdb-node]
+  (let [[query load-query!] (source/use-state nil)
+        query-source (source/computed
+                      #(when-let [q (some->> %
+                                             (java.util.UUID/fromString)
+                                             (xt/entity (xt/db xtdb-node)))]
+                         (str "editor.getDoc().setValue("
+                              (pr-str (:xtdb-inspector.saved-query/query q))
+                              ")"))
+                      query)]
+    (h/html
+     [:div
+      (js/eval-js-from-source query-source)
+
+      [:div.flex.flex-row
+       [:div.border-2.p-2
+        "Save query as: "
+        [:input#save-query-as {:type :text :placeholder "save query as"}]
+        [:button.p-1.bg-blue-200
+         {:on-click (js/js (partial save-query! xtdb-node)
+                           (js/input-value "save-query-as")
+                           "editor.getDoc().getValue()")}
+         "Save"]]
+       [:div.border-2.p-2.ml-1
+        "Load saved query: "
+        [::h/live (rx/q {:node xtdb-node :should-update? (constantly true)} saved-queries)
+         (fn [queries]
+           (h/html
+            [:select {:name "saved-query"
+                      :on-change (js/js load-query! js/change-value)}
+             [:option {:disabled true :selected true} "--  saved query --"]
+             [::h/for [{:keys [id name]} queries
+                       :let [id (str id)]]
+              [:option {:value id} name]]]))]]]])))
+
+
 (defn render [{:keys [xtdb-node request]}]
   (let [[state set-state!] (source/use-state {:query nil
                                               :running? false
@@ -131,6 +188,7 @@
         "matchBrackets: true,"
         "mode: 'text/x-clojure'"
         "})")]
+      (saved-queries-ui xtdb-node)
       [::h/live (source/c= (select-keys %state [:error? :error-message]))
        (fn [{:keys [error? error-message] :as f}]
          (h/html
