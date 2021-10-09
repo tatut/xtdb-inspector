@@ -40,7 +40,7 @@
             (set-state! {:running? false
                          :error? false
                          :results res
-                         :headers (:find q)}))
+                         :query q}))
           (catch Throwable e
             (set-state! {:error? true
                          :error-message (str "Error in query: " (.getMessage e))
@@ -61,23 +61,47 @@
        :d "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"}]]
     label]))
 
-(defn render-results [xtdb-node {:keys [running? results headers]}]
+(defn unpack-find-defs
+  "Unpack the :find definitions into header name and accessor patterns.
+  This separates keywords specified in pull patterns to own columns
+  in the result table."
+  [query]
+  (let [column-accessors
+        (or (some->> query :keys (map keyword))
+            (range))]
+    (mapcat
+     (fn [header column-accessor]
+       (if (and (coll? header)
+                (= 'pull (first header))
+                (every? #(not= '* %) (nth header 2)))
+         ;; pull pattern that has no star, generate column for each
+         (for [k (nth header 2)]
+           {:name (name k)
+            :accessor [column-accessor k]})
+
+         ;; any other result
+         [{:name (pr-str header)
+           :accessor [column-accessor]}]))
+     (:find query) column-accessors)))
+
+(defn render-results [xtdb-node {:keys [running? results query]}]
   (if running?
     (loading "Querying...")
-    (let [db (xt/db xtdb-node)]
+    (let [db (xt/db xtdb-node)
+          headers (unpack-find-defs query)]
       (h/html
        [:div
         [::h/when (seq results)
          [:table.w-full
           [:thead.bg-gray-200
            [:tr
-            [::h/for [h headers
-                      :let [header-name (pr-str h)]]
+            [::h/for [header-name (map :name headers)]
              [:td header-name]]]]
           [:tbody
            [::h/for [row results]
             [:tr
-             [::h/for [item row]
+             [::h/for [{:keys [accessor]} headers
+                       :let [item (get-in row accessor)]]
               [:td
                (ui/format-value db item)]]]]]]]]))))
 
@@ -115,5 +139,5 @@
        {:on-click (js/js query! "editor.getDoc().getValue()")}
        "Run query"]
 
-      [::h/live (source/c= (select-keys %state [:running? :results :headers]))
+      [::h/live (source/c= (select-keys %state [:running? :results :query]))
        (partial render-results xtdb-node)]])))
