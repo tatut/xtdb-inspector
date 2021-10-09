@@ -1,6 +1,8 @@
 (ns user
   (:require [xtdb.api :as xt]
-            [xtdb-inspector.core :as inspector]))
+            [xtdb-inspector.core :as inspector]
+            [clojure.java.io :as io]
+            [clojure.string :as str]))
 
 (defonce xtdb (atom nil))
 (defonce server (atom nil))
@@ -52,4 +54,19 @@
                                   :link "over-there"
                                   :new-key "this one is"
                                   :things ["thing1" "thing3"]}]])
+
+  ;; Insert some test people data
+  (xt/submit-tx
+   @xtdb
+   (for [{:keys [id first_name last_name email gender job_title address]}
+         (read-string (slurp (io/resource "testdata/people.edn")))]
+     [::xt/put
+      {:xt/id {:person-id id}
+       :first-name first_name
+       :last-name last_name
+       :email email
+       :gender (-> gender str/lower-case keyword)
+       :job-title job_title
+       :address address}]))
+
   )
