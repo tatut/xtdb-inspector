@@ -111,36 +111,36 @@
                      #(ui/format-value (partial id/valid-id? db) from))]]]]))
 
 (defn render [{:keys [xtdb-node request] :as ctx}]
-  (let [id (some-> request :params :doc-id id/read-doc-id)
-        db (xt/db xtdb-node)
-        entity (xt/entity db id)
-        id-str (pr-str id)
-        [show-history-source set-show-history!] (source/use-state false)]
-    (h/html
-     [:div
-      [:h3.bg-gray-300 "Document   " [:span.font-mono id-str]]
-      [:table.font-mono {:class "w-9/12"}
-       [:thead
-        [:tr
-         [:td "Attribute"]
-         [:td "Value"]]]
-       [:tbody
-        [::h/for [[k v] (dissoc entity :xt/id)
-                  :let [key-name (pr-str k)]]
-         [:tr.hover:bg-gray-100
-          [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
-          [:td.px-2.py-2
-           (ui/format-value (partial id/valid-id? db) v)]]]]]
+  (with-open [db (xt/open-db xtdb-node)]
+    (let [id (some-> request :params :doc-id id/read-doc-id)
+          entity (xt/entity db id)
+          id-str (pr-str id)
+          [show-history-source set-show-history!] (source/use-state false)]
+      (h/html
+       [:div
+        [:h3.bg-gray-300 "Document   " [:span.font-mono id-str]]
+        [:table.font-mono {:class "w-9/12"}
+         [:thead
+          [:tr
+           [:td "Attribute"]
+           [:td "Value"]]]
+         [:tbody
+          [::h/for [[k v] (dissoc entity :xt/id)
+                    :let [key-name (pr-str k)]]
+           [:tr.hover:bg-gray-100
+            [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
+            [:td.px-2.py-2
+             (ui/format-value (partial id/valid-id? db) v)]]]]]
 
-      [:h3.bg-gray-300 "Links from other documents"]
-      [::h/live (future (links-to xtdb-node id))
-       (partial render-links-to db)]
+        [:h3.bg-gray-300 "Links from other documents"]
+        [::h/live (future (links-to xtdb-node id))
+         (partial render-links-to db)]
 
-      [::h/live show-history-source
-       (fn [show?]
-         (h/html
-          [:div
-           [::h/if show?
-            (entity-history db id)
-            [:button {:on-click #(set-show-history! true)}
-             "Show history"]]]))]])))
+        [::h/live show-history-source
+         (fn [show?]
+           (h/html
+            [:div
+             [::h/if show?
+              (entity-history db id)
+              [:button {:on-click #(set-show-history! true)}
+               "Show history"]]]))]]))))

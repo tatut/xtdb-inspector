@@ -9,7 +9,8 @@
             [cheshire.core :as cheshire]
             [ripley.live.protocols :as p]
             [ripley.impl.dynamic :as dyn]
-            xtdb.query))
+            xtdb.query
+            [xtdb-inspector.id :as id]))
 
 
 (def codemirror-js
@@ -49,7 +50,7 @@
                          :results res
                          :query q
                          :timing (/ (- te ts) 1e6)
-                         :db db}))
+                         :basis (xt/db-basis db)}))
           (catch Throwable e
             (set-state! {:error? true
                          :error-message (str "Error in query: " (.getMessage e))
@@ -96,13 +97,12 @@
            (for [k (nth header 2)]
              {:name (str (when column-name
                            (str column-name ": ")) (name k))
-              :accessor [column-accessor k]
-              :id? false})
+              :accessor [column-accessor k]})
 
            ;; any other result
            [{:name (or column-name (pr-str header))
              :accessor [column-accessor]
-             :id? (id? header)}])))
+             :id? (boolean (id? header))}])))
      (:find query) column-accessors)))
 
 (defn- duration [ms]
@@ -116,7 +116,7 @@
     :else
     (format "%.2fms" ms)))
 
-(defn render-results [xtdb-node {:keys [running? results query timing db] :as r}]
+(defn render-results [xtdb-node {:keys [basis running? results query timing] :as r}]
   (cond
     ;; Query is running
     running?
@@ -128,8 +128,8 @@
 
     ;; Query has been run and results are available
     :else
-    (let [headers (unpack-find-defs db query)]
-      (with-open [db (xt/open-db xtdb-node)]
+    (with-open [db (xt/open-db xtdb-node basis)]
+      (let [headers (unpack-find-defs db query)]
         (h/html
          [:div
           [:div.text-sm
@@ -146,7 +146,13 @@
                [::h/for [{:keys [accessor id?]} headers
                          :let [item (get-in row accessor)]]
                 [:td
-                 (ui/format-value (constantly id?) item)]]]]]]]])))))
+                 (ui/format-value #(if (some? id?)
+                                     ;; id known based on query plan
+                                     id?
+
+                                     ;; unknown, check if it is an id
+                                     (id/valid-id? db %))
+                                  item)]]]]]]]])))))
 
 (defn saved-queries [db]
   (xt/q db '{:find [?e ?n]
@@ -245,5 +251,5 @@
         [:label {:for "live"} "Update live"]]]
 
       [::h/live (source/c= (select-keys %state
-                                        [:running? :results :query :timing :db]))
+                                        [:basis :running? :results :query :timing]))
        (partial render-results xtdb-node)]])))

@@ -22,7 +22,8 @@
   has information in the database."
   [db id]
   (and (id-type? id)
-       (some? (xt/entity-tx db id))))
+       (some? (ffirst (xt/q db '[:find e :where [e :xt/id] :in e]
+                            id)))))
 
 
 (defn read-doc-id
