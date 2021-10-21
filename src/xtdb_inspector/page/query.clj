@@ -39,11 +39,14 @@
                      :error? false
                      :results nil})
         (try
-          (let [res (xt/q (xt/db xtdb-node) q)]
+          (let [ts (System/nanoTime)
+                res (xt/q (xt/db xtdb-node) q)
+                te (System/nanoTime)]
             (set-state! {:running? false
                          :error? false
                          :results res
-                         :query q}))
+                         :query q
+                         :timing (/ (- te ts) 1e6)}))
           (catch Throwable e
             (set-state! {:error? true
                          :error-message (str "Error in query: " (.getMessage e))
@@ -90,13 +93,35 @@
              :accessor [column-accessor]}])))
      (:find query) column-accessors)))
 
-(defn render-results [xtdb-node {:keys [running? results query]}]
-  (if running?
+(defn- duration [ms]
+  (cond
+    (> ms 1000)
+    (format "%.2fs" (/ ms 1000.0))
+
+    (> ms 100)
+    (format "%.0fms" ms)
+
+    :else
+    (format "%.2fms" ms)))
+
+(defn render-results [xtdb-node {:keys [running? results query timing] :as r}]
+  (cond
+    ;; Query is running
+    running?
     (loading "Querying...")
+
+    ;; No query has been made yet and no query is running
+    (nil? results)
+    (h/html [:span])
+
+    ;; Query has been run and results are available
+    :else
     (let [db (xt/db xtdb-node)
           headers (unpack-find-defs query)]
       (h/html
        [:div
+        [:div.text-sm
+         (h/dyn! (count results)) " results in " (h/dyn! (duration  timing))]
         [::h/when (seq results)
          [:table.w-full
           [:thead.bg-gray-200
@@ -200,5 +225,5 @@
        {:on-click (js/js query! "editor.getDoc().getValue()")}
        "Run query"]
 
-      [::h/live (source/c= (select-keys %state [:running? :results :query]))
+      [::h/live (source/c= (select-keys %state [:running? :results :query :timing]))
        (partial render-results xtdb-node)]])))
