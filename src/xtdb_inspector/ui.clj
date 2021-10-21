@@ -9,13 +9,13 @@
 
 (defn format-value
   "Format a given value, if it is a valid id, render a link to view it."
-  [db value]
+  [is-id? value]
   (if (vector? value)
     (h/html
      [:ul
       [::h/for [v value]
-       [:li (format-value db v)]]])
-    (let [link (when (id/valid-id? db value)
+       [:li (format-value is-id? v)]]])
+    (let [link (when (is-id? value)
                  (str "/doc/" (id/doc-id-param value)))
           stringified (pr-str value)]
       (h/html

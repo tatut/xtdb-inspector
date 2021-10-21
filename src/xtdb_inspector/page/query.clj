@@ -8,7 +8,8 @@
             [ripley.integration.xtdb :as rx]
             [cheshire.core :as cheshire]
             [ripley.live.protocols :as p]
-            [ripley.impl.dynamic :as dyn]))
+            [ripley.impl.dynamic :as dyn]
+            xtdb.query))
 
 
 (def codemirror-js
@@ -39,14 +40,16 @@
                      :error? false
                      :results nil})
         (try
-          (let [ts (System/nanoTime)
-                res (xt/q (xt/db xtdb-node) q)
+          (let [db (xt/db xtdb-node)
+                ts (System/nanoTime)
+                res (xt/q db q)
                 te (System/nanoTime)]
             (set-state! {:running? false
                          :error? false
                          :results res
                          :query q
-                         :timing (/ (- te ts) 1e6)}))
+                         :timing (/ (- te ts) 1e6)
+                         :db db}))
           (catch Throwable e
             (set-state! {:error? true
                          :error-message (str "Error in query: " (.getMessage e))
@@ -70,9 +73,16 @@
 (defn unpack-find-defs
   "Unpack the :find definitions into header name and accessor patterns.
   This separates keywords specified in pull patterns to own columns
-  in the result table."
-  [query]
-  (let [column-accessors
+  in the result table.
+
+  Also determines which vars are ids based on query plan."
+  [db query]
+  (let [id? (into #{}
+                  (comp
+                   (filter #(= (:attr (second %)) :crux.db/id))
+                   (map first))
+                  (:var->bindings (xtdb.query/query-plan-for db query)))
+        column-accessors
         (or (some->> query :keys (map keyword))
             (range))]
     (mapcat
@@ -86,11 +96,13 @@
            (for [k (nth header 2)]
              {:name (str (when column-name
                            (str column-name ": ")) (name k))
-              :accessor [column-accessor k]})
+              :accessor [column-accessor k]
+              :id? false})
 
            ;; any other result
            [{:name (or column-name (pr-str header))
-             :accessor [column-accessor]}])))
+             :accessor [column-accessor]
+             :id? (id? header)}])))
      (:find query) column-accessors)))
 
 (defn- duration [ms]
@@ -104,7 +116,7 @@
     :else
     (format "%.2fms" ms)))
 
-(defn render-results [xtdb-node {:keys [running? results query timing] :as r}]
+(defn render-results [xtdb-node {:keys [running? results query timing db] :as r}]
   (cond
     ;; Query is running
     running?
@@ -116,25 +128,25 @@
 
     ;; Query has been run and results are available
     :else
-    (let [db (xt/db xtdb-node)
-          headers (unpack-find-defs query)]
-      (h/html
-       [:div
-        [:div.text-sm
-         (h/dyn! (count results)) " results in " (h/dyn! (duration  timing))]
-        [::h/when (seq results)
-         [:table.w-full
-          [:thead.bg-gray-200
-           [:tr
-            [::h/for [header-name (map :name headers)]
-             [:td header-name]]]]
-          [:tbody
-           [::h/for [row results]
-            [:tr
-             [::h/for [{:keys [accessor]} headers
-                       :let [item (get-in row accessor)]]
-              [:td
-               (ui/format-value db item)]]]]]]]]))))
+    (let [headers (unpack-find-defs db query)]
+      (with-open [db (xt/open-db xtdb-node)]
+        (h/html
+         [:div
+          [:div.text-sm
+           (h/dyn! (count results)) " results in " (h/dyn! (duration  timing))]
+          [::h/when (seq results)
+           [:table.w-full
+            [:thead.bg-gray-200
+             [:tr
+              [::h/for [header-name (map :name headers)]
+               [:td header-name]]]]
+            [:tbody
+             [::h/for [row results]
+              [:tr
+               [::h/for [{:keys [accessor id?]} headers
+                         :let [item (get-in row accessor)]]
+                [:td
+                 (ui/format-value (constantly id?) item)]]]]]]]])))))
 
 (defn saved-queries [db]
   (xt/q db '{:find [?e ?n]
@@ -221,9 +233,17 @@
            [::h/if error?
             [:div.bg-red-300.border-2 error-message]
             [:span]]]))]
-      [:button.p-1.bg-blue-200
-       {:on-click (js/js query! "editor.getDoc().getValue()")}
-       "Run query"]
+      [:div.flex
+       [:button.p-1.bg-blue-200
+        {:on-click (js/js query!
+                          "editor.getDoc().getValue()"
+                          ""
+                          )}
+        "Run query"]
+       #_[:div.ml-4
+        [:input#live {:name "live" :type "checkbox"}]
+        [:label {:for "live"} "Update live"]]]
 
-      [::h/live (source/c= (select-keys %state [:running? :results :query :timing]))
+      [::h/live (source/c= (select-keys %state
+                                        [:running? :results :query :timing :db]))
        (partial render-results xtdb-node)]])))

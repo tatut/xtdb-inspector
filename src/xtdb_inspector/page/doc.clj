@@ -108,7 +108,7 @@
       [::h/for [[attr from] links
                 :let [attr-name (pr-str attr)]]
        (attr-val-row attr-name
-                     #(ui/format-value db from))]]]]))
+                     #(ui/format-value (partial id/valid-id? db) from))]]]]))
 
 (defn render [{:keys [xtdb-node request] :as ctx}]
   (let [id (some-> request :params :doc-id id/read-doc-id)
@@ -130,7 +130,7 @@
          [:tr.hover:bg-gray-100
           [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
           [:td.px-2.py-2
-           (ui/format-value db v)]]]]]
+           (ui/format-value (partial id/valid-id? db) v)]]]]]
 
       [:h3.bg-gray-300 "Links from other documents"]
       [::h/live (future (links-to xtdb-node id))
