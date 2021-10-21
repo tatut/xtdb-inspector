@@ -2,7 +2,14 @@
 Web UI for inspecting XTDB database
 
 Demo:
-![Demo screen recording](demo.gif)
+
+Browsing documents and showing history:
+
+![Demo screen recording of document browsing](demo/demo-doc.gif)
+
+Query viewer and saved queries:
+
+![Demo screen recording of queries](demo/demo-query.gif)
 
 ## Running
 
