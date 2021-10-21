@@ -1,6 +1,9 @@
 # xtdb-inspector
 Web UI for inspecting XTDB database
 
+Demo:
+![Demo screen recording](demo.gif)
+
 ## Running
 
 To simply try it out, start repl with `:dev` alias:
