@@ -10,7 +10,8 @@
             [ripley.live.protocols :as p]
             [ripley.impl.dynamic :as dyn]
             xtdb.query
-            [xtdb-inspector.id :as id]))
+            [xtdb-inspector.id :as id]
+            [clojure.core.async :as async]))
 
 
 (def codemirror-js
@@ -29,6 +30,20 @@
     (catch Throwable t
       {:error (.getMessage t)})))
 
+(defn query-result-and-count-sources [db q on-error!]
+  (let [ch (async/chan)
+        result-count (atom 0)]
+    (async/thread
+      (try
+        (with-open [res (xt/open-q db q)]
+          (doseq [p (->> res iterator-seq (partition-all 20))]
+            (swap! result-count + (count p))
+            (async/>!! ch p)))
+        (catch Throwable t
+          (on-error! (str "Error in query: " (.getMessage t)))))
+      (async/close! ch))
+    [ch result-count]))
+
 (defn- query! [xtdb-node set-state! query-str]
   (let [{:keys [q error]} (safe-read query-str)]
     (if error
@@ -41,15 +56,17 @@
                      :error? false
                      :results nil})
         (try
-          (let [db (xt/db xtdb-node)
-                ts (System/nanoTime)
-                res (xt/q db q)
-                te (System/nanoTime)]
+          (let [db (xt/db xtdb-node)]
             (set-state! {:running? false
                          :error? false
-                         :results res
+                         :results (query-result-and-count-sources
+                                   db q
+                                   #(set-state! {:error? true
+                                                 :error-message %
+                                                 :running? false
+                                                 :results nil}))
                          :query q
-                         :timing (/ (- te ts) 1e6)
+                         :timing (System/nanoTime)
                          :basis (xt/db-basis db)}))
           (catch Throwable e
             (set-state! {:error? true
@@ -102,7 +119,7 @@
            ;; any other result
            [{:name (or column-name (pr-str header))
              :accessor [column-accessor]
-             :id? (boolean (id? header))}])))
+             :id? (when (id? header) true)}])))
      (:find query) column-accessors)))
 
 (defn- duration [ms]
@@ -128,31 +145,42 @@
 
     ;; Query has been run and results are available
     :else
-    (with-open [db (xt/open-db xtdb-node basis)]
-      (let [headers (unpack-find-defs db query)]
-        (h/html
-         [:div
-          [:div.text-sm
-           (h/dyn! (count results)) " results in " (h/dyn! (duration  timing))]
-          [::h/when (seq results)
-           [:table.w-full
-            [:thead.bg-gray-200
-             [:tr
-              [::h/for [header-name (map :name headers)]
-               [:td header-name]]]]
-            [:tbody
-             [::h/for [row results]
-              [:tr
-               [::h/for [{:keys [accessor id?]} headers
-                         :let [item (get-in row accessor)]]
-                [:td
-                 (ui/format-value #(if (some? id?)
-                                     ;; id known based on query plan
-                                     id?
+    (let [[result-source count-source] results
+          db (xt/db xtdb-node)
+          headers (unpack-find-defs db query)]
+      (h/html
+       [:div
+        [:div.text-sm
+         [::h/live count-source
+          #(h/html [:span
+                    (h/dyn! %)
+                    " results in "
+                    (h/dyn! (duration (/ (- (System/nanoTime) timing) 1e6)))])]]
+        [:table.w-full
+         [:thead.bg-gray-200
+          [:tr
+           [::h/for [header-name (map :name headers)]
+            [:td header-name]]]]
+         [::h/live
+          {:source result-source
+           :patch :append
+           :container [:tbody]
+           :component
+           (fn [results]
+             (with-open [db (xt/open-db xtdb-node basis)]
+               (h/html
+                [::h/for [row results]
+                 [:tr
+                  [::h/for [{:keys [accessor id?]} headers
+                            :let [item (get-in row accessor)]]
+                   [:td
+                    (ui/format-value #(if (some? id?)
+                                        ;; id known based on query plan
+                                        id?
 
-                                     ;; unknown, check if it is an id
-                                     (id/valid-id? db %))
-                                  item)]]]]]]]])))))
+                                        ;; unknown, check if it is an id
+                                        (id/valid-id? db %))
+                                     item)]]]])))}]]]))))
 
 (defn saved-queries [db]
   (xt/q db '{:find [?e ?n]
