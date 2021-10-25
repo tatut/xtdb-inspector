@@ -108,7 +108,7 @@
       [::h/for [[attr from] links
                 :let [attr-name (pr-str attr)]]
        (attr-val-row attr-name
-                     #(ui/format-value (partial id/valid-id? db) from))]]]]))
+                     #(ui/format-value (constantly true) from))]]]]))
 
 (defn render [{:keys [xtdb-node request] :as ctx}]
   (with-open [db (xt/open-db xtdb-node)]
