@@ -31,3 +31,9 @@ monitoring reporter in the XTDB node config:
 ```
 :xtdb-inspector.metrics/reporter {}
 ```
+
+## Changes
+
+### 2021-10-28
+- Add top bar navigation with search. Can query lucene index to find docs.
+- Directly navigate to saved query by name (`/query/<query name`) to load it
