@@ -5,7 +5,8 @@
             [xtdb-inspector.ui :as ui]
             [xtdb.api :as xt]
             [ripley.live.source :as source]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [ripley.js :as js]))
 
 ;; PENDING: we could have a live collection
 ;; for the history and listen to changes as they happen.
@@ -144,3 +145,23 @@
               (entity-history db id)
               [:button {:on-click #(set-show-history! true)}
                "Show history"]]]))]]))))
+
+(defn render-form [ctx]
+  (let [doc (atom nil)
+        set-doc! (fn [value]
+                   (println "value ois: " value)
+                   (binding [*read-eval* false]
+                     (reset! doc (read-string value))))]
+    (h/html
+     [:div.flex.flex-col.m-4
+      [:div "Insert XTDB document id (" [:span.font-mono ":xt/id"] ") as EDN:"]
+      [:div
+       [:input#doc {:name "doc"}]
+       [:button.border-2.rounded-2.p-1
+        {:on-click (js/js set-doc! (js/input-value "doc"))}
+        "Go"]]
+      [:span.font-light
+       "Examples: 123  :hello  \"some-doc\" "]
+      (js/eval-js-from-source
+       (source/c= (str "window.location.pathname += \"/"
+                       (id/doc-id-param %doc) "\"")))]))  )

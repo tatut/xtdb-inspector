@@ -20,6 +20,8 @@
   (let [ctx {:xtdb-node xtdb-node}]
     (routes
      (context/connection-handler "/__ripley-live" :ping-interval 45)
+     (GET "/doc" req
+          (page ctx req #'page.doc/render-form))
      (GET "/doc/:doc-id" req
           (page ctx req #'page.doc/render))
      (GET "/query" req
