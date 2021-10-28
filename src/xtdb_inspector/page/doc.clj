@@ -6,7 +6,8 @@
             [xtdb.api :as xt]
             [ripley.live.source :as source]
             [clojure.set :as set]
-            [ripley.js :as js]))
+            [ripley.js :as js]
+            [ripley.integration.xtdb :as rx]))
 
 ;; PENDING: we could have a live collection
 ;; for the history and listen to changes as they happen.
@@ -111,40 +112,74 @@
        (attr-val-row attr-name
                      #(ui/format-value (constantly true) from))]]]]))
 
-(defn render [{:keys [xtdb-node request] :as ctx}]
-  (with-open [db (xt/open-db xtdb-node)]
-    (let [id (some-> request :params :doc-id id/read-doc-id)
-          entity (xt/entity db id)
-          id-str (pr-str id)
-          [show-history-source set-show-history!] (source/use-state false)]
-      (h/html
-       [:div
-        [:h3.bg-gray-300 "Document   " [:span.font-mono id-str]]
-        [:table.font-mono {:class "w-9/12"}
-         [:thead
-          [:tr
-           [:td "Attribute"]
-           [:td "Value"]]]
-         [:tbody
-          [::h/for [[k v] (dissoc entity :xt/id)
-                    :let [key-name (pr-str k)]]
-           [:tr.hover:bg-gray-100
-            [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
-            [:td.px-2.py-2
-             (ui/format-value (partial id/valid-id? db) v)]]]]]
+(defn- update-doc! [xtdb-node entity attribute value-as-edn]
+  ;; NOTE: this doesn't check if entity has changed
+  (let [new-value (binding [*read-eval* false]
+                    (read-string value-as-edn))]
+    (xt/submit-tx xtdb-node
+                  [[::xt/put (assoc entity attribute new-value)]])))
 
-        [:h3.bg-gray-300 "Links from other documents"]
-        [::h/live (future (links-to xtdb-node id))
-         render-links-to]
+(defn- render-entity-attrs [xtdb-node entity]
+  (let [db (xt/db xtdb-node)]
+    (h/html
+     [:tbody
+      [::h/for [[k v] (dissoc entity :xt/id)
+                :let [key-name (pr-str k)
+                      [edit? set-edit!] (source/use-state false)]]
+       [:tr.hover:bg-gray-100
+        [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
+        [:td.px-2.py-2.hover-trigger
+         [::h/live edit?
+          (fn [edit?]
+            (if-not edit?
+              (h/html
+               [:div
+                (ui/format-value (partial id/valid-id? db) v)
+                [:button.hover-target.float-right
+                 {:on-click #(set-edit! true)}
+                 "edit"]])
+              (let [initial-value (pr-str v)
+                    id (str (gensym "edit"))]
+                (h/html
+                 [:div
+                  [:input.w-full {:autofocus true
+                                  :type "text"
+                                  :value initial-value
+                                  :id id
+                                  :on-blur (js/js (partial update-doc! xtdb-node
+                                                           entity k)
+                                                  (js/input-value id))}]]))))]]]]])))
 
-        [::h/live show-history-source
-         (fn [show?]
-           (h/html
-            [:div
-             [::h/if show?
-              (entity-history db id)
-              [:button {:on-click #(set-show-history! true)}
-               "Show history"]]]))]]))))
+(defn render [{:keys [xtdb-node request] :as _ctx}]
+  (let [id (some-> request :params :doc-id id/read-doc-id)
+        entity-source (rx/q {:node xtdb-node}
+                            '{:find [(pull e [*])]
+                              :in [e]} id)
+        id-str (pr-str id)
+        [show-history-source set-show-history!] (source/use-state false)]
+    (h/html
+     [:div
+      [:h3.bg-gray-300 "Document   " [:span.font-mono id-str]]
+      [:table.font-mono {:class "w-9/12"}
+       [:thead
+        [:tr
+         [:td "Attribute"]
+         [:td "Value"]]]
+       [::h/live (source/c= (ffirst %entity-source))
+        (partial render-entity-attrs xtdb-node)]]
+
+      [:h3.bg-gray-300 "Links from other documents"]
+      [::h/live (future (links-to xtdb-node id))
+       render-links-to]
+
+      [::h/live show-history-source
+       (fn [show?]
+         (h/html
+          [:div
+           [::h/if show?
+            (entity-history (xt/db xtdb-node) id)
+            [:button {:on-click #(set-show-history! true)}
+             "Show history"]]]))]])))
 
 (defn render-form [ctx]
   (let [doc (atom nil)

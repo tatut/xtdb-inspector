@@ -38,3 +38,4 @@ monitoring reporter in the XTDB node config:
 - Add top bar navigation with search. Can query lucene index to find docs.
 - Directly navigate to saved query by name (`/query/<query name>`) to load it
 - New attribute page that shows attributes and their values
+- Document page can now do simple edits to the values

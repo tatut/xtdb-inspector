@@ -85,6 +85,9 @@
      [:html
       [:head
        [:link {:rel "stylesheet" :href "/xtdb-inspector.css"}]
+       [:style
+        ".hover-trigger .hover-target { display: none; }"
+        ".hover-trigger:hover .hover-target { display: block; }"]
        (h/live-client-script "/__ripley-live")]
       [:body
        (app-bar ctx (partial lucene-search! xtdb-node set-results!))
