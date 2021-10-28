@@ -97,7 +97,7 @@
                  [attr from])))
             attrs))))
 
-(defn render-links-to [db links]
+(defn render-links-to [links]
   (h/html
    [:div
     [:table.font-mono {:class "w-9/12"}
@@ -109,7 +109,7 @@
       [::h/for [[attr from] links
                 :let [attr-name (pr-str attr)]]
        (attr-val-row attr-name
-                     #(ui/format-value (partial id/valid-id? db) from))]]]]))
+                     #(ui/format-value (constantly true) from))]]]]))
 
 (defn render [{:keys [xtdb-node request] :as ctx}]
   (with-open [db (xt/open-db xtdb-node)]
@@ -135,7 +135,7 @@
 
         [:h3.bg-gray-300 "Links from other documents"]
         [::h/live (future (links-to xtdb-node id))
-         (partial render-links-to db)]
+         render-links-to]
 
         [::h/live show-history-source
          (fn [show?]
