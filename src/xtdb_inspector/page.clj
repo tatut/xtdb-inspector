@@ -62,7 +62,7 @@
 (defn render-lucene-results [results]
   (let [class (if (empty? results)
                 "hidden"
-                "fixed w-9/12 bg-gray-100 p-2 border-2")]
+                "z-50 fixed w-9/12 bg-gray-100 p-2 border-2")]
     (h/html
      [:div {:class class :style "left: 12.5%;"}
       [:table
