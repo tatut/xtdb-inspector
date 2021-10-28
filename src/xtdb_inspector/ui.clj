@@ -7,6 +7,11 @@
 (defn format-inst [inst]
   (.format (java.text.SimpleDateFormat. "yyyy-MM-dd HH:mm:ss.SSS") inst))
 
+
+(defn link [href title]
+  (h/html
+   [:a.underline.bg-blue-200 {:href href} title]))
+
 (defn format-value
   "Format a given value, if it is a valid id, render a link to view it."
   [is-id? value]
@@ -15,10 +20,10 @@
      [:ul
       [::h/for [v value]
        [:li (format-value is-id? v)]]])
-    (let [link (when (is-id? value)
+    (let [href (when (is-id? value)
                  (str "/doc/" (id/doc-id-param value)))
           stringified (pr-str value)]
       (h/html
-       [::h/if link
-        [:a.underline.bg-blue-200 {:href link} stringified]
-        stringified]))))
+       (if href
+         (link href stringified)
+         (h/dyn! stringified))))))
