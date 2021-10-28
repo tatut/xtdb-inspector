@@ -235,9 +235,20 @@
                        :let [id (str id)]]
               [:option {:value id} name]]]))]]]])))
 
+(defn- saved-query-by-name [db name]
+  (ffirst
+   (xt/q db '{:find [q]
+              :where [[query :xtdb-inspector.saved-query/name name]
+                      [query :xtdb-inspector.saved-query/query q]]
+              :in [name]}
+         name)))
 
 (defn render [{:keys [xtdb-node request]}]
-  (let [[state set-state!] (source/use-state {:query nil
+  (let [query-text (or
+                    (some->> request :params :query
+                             (saved-query-by-name (xt/db xtdb-node)))
+                    "{:find []\n :where []}")
+        [state set-state!] (source/use-state {:query nil
                                               :running? false
                                               :results nil
                                               :error? false})
@@ -249,8 +260,7 @@
       [:link {:rel "stylesheet" :href codemirror-css}]
       [:h2 "Query"]
       [:div.unreset
-       [:textarea#query
-        "{:find []\n :where []}"]]
+       [:textarea#query query-text]]
       [:script
        (h/out!
         "var editor = CodeMirror.fromTextArea(document.getElementById('query'), {"
@@ -273,10 +283,7 @@
                           "editor.getDoc().getValue()"
                           ""
                           )}
-        "Run query"]
-       #_[:div.ml-4
-        [:input#live {:name "live" :type "checkbox"}]
-        [:label {:for "live"} "Update live"]]]
+        "Run query"]]
 
       [::h/live (source/c= (select-keys %state
                                         [:basis :running? :results :query :timing]))

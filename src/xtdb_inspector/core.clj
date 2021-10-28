@@ -26,6 +26,8 @@
           (page ctx req #'page.doc/render))
      (GET "/query" req
           (page ctx req #'page.query/render))
+     (GET "/query/:query" req
+          (page ctx req #'page.query/render))
      (route/resources "/"))))
 
 
