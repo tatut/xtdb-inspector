@@ -9,7 +9,8 @@
 
 (defn start []
   (println "Starting dev instance with in-memory XTDB in port 3000")
-  (swap! xtdb #(or % (xt/start-node {:xtdb.metrics/metrics {}
+  (swap! xtdb #(or % (xt/start-node {:xtdb.lucene/lucene-store {}
+                                     :xtdb.metrics/metrics {}
                                      :xtdb-inspector.metrics/reporter {}})))
   (swap! server
          (fn [old-server]
