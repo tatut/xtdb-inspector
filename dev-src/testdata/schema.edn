@@ -1,0 +1,20 @@
+;; Malli schema for employees and departments
+{:employee
+ [:map {:xtdb-inspector.entity/label ["Employee" "Employees"]}
+  [:xt/id uuid?] ; if not specified, automatically uses uuid
+  [:first-name string?]
+  [:last-name string?]
+  [:email [:and string? #".+@.+"]]
+  [:gender [:enum "Male" "Female" "Agender" "Bigender" "Genderqueer" "Genderfluid" "Non-binary" "Polygender"]]
+  [:job-title string?]
+  [:address string?]
+  [:department [:xtdb-inspector.entity/ref :department]]
+  [:supervisor [:xtdb-inspector.entity/ref :employee]]]
+
+ :department
+ [:map {:xtdb-inspector.entity/label ["Department" "Departments"]}
+  [:xt/id [:map {:closed true}
+           [:department string?]]]
+  [:name string?]
+  [:manager [:xtdb-inspector.entity/ref :employee]]]
+ }

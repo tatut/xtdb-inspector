@@ -6,5 +6,6 @@
         http-kit/http-kit {:mvn/version "2.5.3"}
         com.xtdb/xtdb-core {:mvn/version "1.19.0"}
         com.xtdb/xtdb-metrics {:mvn/version "1.19.0"}
-        com.xtdb/xtdb-lucene {:mvn/version "1.19.0"}}
+        com.xtdb/xtdb-lucene {:mvn/version "1.19.0"}
+        metosin/malli {:mvn/version "0.6.2"}}
  :aliases {:dev {:extra-paths ["dev-src"]}}}
