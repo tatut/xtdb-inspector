@@ -7,7 +7,8 @@
             [ripley.live.source :as source]
             [clojure.set :as set]
             [ripley.js :as js]
-            [ripley.integration.xtdb :as rx]))
+            [ripley.integration.xtdb :as rx])
+  (:import (java.time LocalDate LocalTime)))
 
 ;; PENDING: we could have a live collection
 ;; for the history and listen to changes as they happen.
@@ -112,12 +113,12 @@
        (attr-val-row attr-name
                      #(ui/format-value (constantly true) from))]]]]))
 
-(defn- update-doc! [xtdb-node entity attribute value-as-edn]
+
+(defn- update-doc! [xtdb-node entity attribute value]
   ;; NOTE: this doesn't check if entity has changed
-  (let [new-value (binding [*read-eval* false]
-                    (read-string value-as-edn))]
-    (xt/submit-tx xtdb-node
-                  [[::xt/put (assoc entity attribute new-value)]])))
+  (xt/submit-tx xtdb-node
+                [[::xt/put (assoc entity attribute value)]]))
+
 
 (defn- render-entity-attrs [xtdb-node entity]
   (let [db (xt/db xtdb-node)]
@@ -133,22 +134,12 @@
           (fn [edit?]
             (if-not edit?
               (h/html
-               [:div
+               [:div.flex.justify-between
                 (ui/format-value (partial id/valid-id? db) v)
-                [:button.hover-target.float-right
+                [:button.hover-target
                  {:on-click #(set-edit! true)}
                  "edit"]])
-              (let [initial-value (pr-str v)
-                    id (str (gensym "edit"))]
-                (h/html
-                 [:div
-                  [:input.w-full {:autofocus true
-                                  :type "text"
-                                  :value initial-value
-                                  :id id
-                                  :on-blur (js/js (partial update-doc! xtdb-node
-                                                           entity k)
-                                                  (js/input-value id))}]]))))]]]]])))
+              (ui/editor-widget-for v (partial update-doc! xtdb-node entity k))))]]]]])))
 
 (defn render [{:keys [xtdb-node request] :as _ctx}]
   (let [id (some-> request :params :doc-id id/read-doc-id)
