@@ -34,6 +34,12 @@ monitoring reporter in the XTDB node config:
 
 ## Changes
 
+### 2022-04-13
+- Add `java.time.Instant` display and editing
+
+### 2022-03-26
+- Better display end edit non-EDN values (`java.time` types)
+
 ### 2021-10-28
 - Add top bar navigation with search. Can query lucene index to find docs.
 - Directly navigate to saved query by name (`/query/<query name>`) to load it
