@@ -36,6 +36,7 @@ monitoring reporter in the XTDB node config:
 
 ### 2022-04-13
 - Add `java.time.Instant` display and editing
+- Allow adding new attributes and creating documents
 
 ### 2022-03-26
 - Better display end edit non-EDN values (`java.time` types)

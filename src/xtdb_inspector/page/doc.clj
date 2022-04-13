@@ -7,7 +7,9 @@
             [ripley.live.source :as source]
             [clojure.set :as set]
             [ripley.js :as js]
-            [ripley.integration.xtdb :as rx])
+            [ripley.integration.xtdb :as rx]
+            [ripley.live.protocols :as p]
+            [clojure.java.io :as io])
   (:import (java.time LocalDate LocalTime)))
 
 ;; PENDING: we could have a live collection
@@ -119,6 +121,52 @@
   (xt/submit-tx xtdb-node
                 [[::xt/put (assoc entity attribute value)]]))
 
+(defn- attr-row [key-fn content-fn]
+  (h/html
+   [:tr.hover:bg-gray-100
+    [:td.px-2.py-2.font-semibold {:class "w-1/3"}
+     (key-fn)]
+    [:td.px-2.py-2.hover-trigger
+     (content-fn)]]))
+
+(defn new-attr-row [xtdb-node entity]
+  (let [[attr-name set-attr-name!] (source/use-state "")
+        [value-type set-value-type!] (source/use-state :not-set)
+        editor-types (-> ui/editor-widget-for
+                         methods
+                         (dissoc :default)
+                         keys)]
+    (attr-row
+     (fn []
+       ;; We don't want live component here, no need to rerender when it changes
+       (ui/input "text" "" set-attr-name!
+                 :placeholder "New attr kw"))
+     (fn []
+       (h/html
+        [:div.flex.justify-left
+         [:select {:on-change (js/js #(set-value-type!
+                                       (or (first (filter (fn [t]
+                                                            (= % (ui/short-class-name t)))
+                                                          editor-types))
+                                           :edn))
+                                     "event.target.value")}
+          [:option {:value ""} " -- select -- "]
+          [:option {:value "EDN"} "EDN"]
+          [::h/for [cls editor-types
+                    :let [class-name (ui/short-class-name cls)]]
+           [:option {:value class-name} class-name]]]
+         [::h/live value-type
+          (fn [type]
+            (if (= type :not-set)
+              (h/html [:span ""])
+              (ui/editor-widget-for
+               type ::ui/empty
+               (fn [to]
+                 (println "update-doc "  (p/current-value attr-name) " => " (pr-str to))
+                 (update-doc! xtdb-node entity
+                              (ui/parse-edn (p/current-value attr-name))
+                              to)))))]
+         ])))))
 
 (defn- render-entity-attrs [xtdb-node entity]
   (let [db (xt/db xtdb-node)]
@@ -127,19 +175,23 @@
       [::h/for [[k v] (dissoc entity :xt/id)
                 :let [key-name (pr-str k)
                       [edit? set-edit!] (source/use-state false)]]
-       [:tr.hover:bg-gray-100
-        [:td.px-2.py-2.font-semibold {:class "w-1/3"} key-name]
-        [:td.px-2.py-2.hover-trigger
-         [::h/live edit?
-          (fn [edit?]
-            (if-not edit?
-              (h/html
-               [:div.flex.justify-between
-                (ui/format-value (partial id/valid-id? db) v)
-                [:button.hover-target
-                 {:on-click #(set-edit! true)}
-                 "edit"]])
-              (ui/editor-widget-for v (partial update-doc! xtdb-node entity k))))]]]]])))
+       (attr-row
+        #(h/out!  key-name)
+        (fn []
+          (h/html
+           [::h/live edit?
+            (fn [edit?]
+              (if-not edit?
+                (h/html
+                 [:div.flex.justify-between
+                  (ui/format-value (partial id/valid-id? db) v)
+                  [:button.hover-target
+                   {:on-click #(set-edit! true)}
+                   "edit"]])
+                (ui/editor-widget-for (type v) v (partial update-doc! xtdb-node entity k))))])))]
+
+      ;; Add new attribute
+      (new-attr-row xtdb-node entity)])))
 
 (defn render [{:keys [xtdb-node request] :as _ctx}]
   (let [id (some-> request :params :doc-id id/read-doc-id)
@@ -156,7 +208,8 @@
         [:tr
          [:td "Attribute"]
          [:td "Value"]]]
-       [::h/live (source/c= (ffirst %entity-source))
+       [::h/live (source/c= (merge {:xt/id id}
+                                   (ffirst %entity-source)))
         (partial render-entity-attrs xtdb-node)]]
 
       [:h3.bg-gray-300 "Links from other documents"]

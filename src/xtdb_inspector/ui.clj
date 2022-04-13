@@ -39,7 +39,8 @@
 
 (defmethod display :default [_] ::no-custom-display)
 
-(def class-of (comp last #(str/split % #"\.") str type))
+(def short-class-name (comp last #(str/split % #"\.") str))
+(def class-of (comp short-class-name type))
 
 (defn format-value
   "Format a given value, if it is a valid id, render a link to view it."
@@ -65,49 +66,56 @@
          [::h/when type
           [:span.text-xs " (" type ")"]]]]))))
 
-(defmulti editor-widget-for (fn [initial-value _set-value!]
-                              (type initial-value)))
+(defmulti editor-widget-for
+  (fn [value-type _initial-value _set-value!]
+    value-type))
 
-(defn- input [type initial-value set-value!]
+(defn input [type initial-value set-value! & {:keys [placeholder]}]
   (let [id (str (gensym "edit"))]
     (h/html
      [:div
       [:input.w-full {:autofocus true
                       :type type
                       :value initial-value
+                      :placeholder (or placeholder "")
                       :id id
                       :on-key-press "if(event.keyCode==13) event.target.blur()"
                       :on-blur (js/js set-value! (js/input-value id))}]])))
 
+(defn- format-for-edit [formatter value]
+  (if (= value ::empty)
+    ""
+    (formatter value)))
+
 ;; Create an editor widget for the given value by type
 (defmethod editor-widget-for LocalDate
-  [date set-value!]
-  (input "date" (str date)
+  [_ date set-value!]
+  (input "date" (format-for-edit str date)
          #(-> % LocalDate/parse set-value!)))
 
 (defmethod editor-widget-for LocalTime
-  [date set-value!]
-  (input "time" (str date)
+  [_ date set-value!]
+  (input "time" (format-for-edit str date)
          #(-> % LocalTime/parse set-value!)))
 
 (defmethod editor-widget-for LocalDateTime
-  [datetime set-value!]
-  (input "datetime-local" (str datetime)
+  [_ datetime set-value!]
+  (input "datetime-local" (format-for-edit str datetime)
          #(-> % LocalDateTime/parse set-value!)))
 
 (defmethod editor-widget-for Duration
-  [duration set-value!]
-  (input "text" (str duration)
+  [_ duration set-value!]
+  (input "text" (format-for-edit str duration)
          #(-> % Duration/parse set-value!)))
 
-(defn- parse-edn [edn-string]
+(defn parse-edn [edn-string]
   (binding [*read-eval* false]
     (read-string edn-string)))
 
 (defmethod editor-widget-for Instant
-  [instant set-value!]
-  (input "text" (str instant)
+  [_ instant set-value!]
+  (input "text" (format-for-edit str instant)
          #(-> % Instant/parse set-value!)))
 
-(defmethod editor-widget-for :default [v set-value!]
-  (input "text" (pr-str v) (comp set-value! parse-edn)))
+(defmethod editor-widget-for :default [_ v set-value!]
+  (input "text" (format-for-edit pr-str v) (comp set-value! parse-edn)))
