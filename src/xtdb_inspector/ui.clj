@@ -4,7 +4,7 @@
             [ripley.html :as h]
             [clojure.string :as str]
             [ripley.js :as js])
-  (:import (java.time LocalDate LocalTime LocalDateTime Duration)
+  (:import (java.time LocalDate LocalTime LocalDateTime Duration Instant)
            (java.time.format DateTimeFormatter FormatStyle)))
 
 
@@ -34,6 +34,8 @@
 (defmethod display Duration
   [d]
   (str d))
+
+(defmethod display Instant [i] (str i))
 
 (defmethod display :default [_] ::no-custom-display)
 
@@ -101,6 +103,11 @@
 (defn- parse-edn [edn-string]
   (binding [*read-eval* false]
     (read-string edn-string)))
+
+(defmethod editor-widget-for Instant
+  [instant set-value!]
+  (input "text" (str instant)
+         #(-> % Instant/parse set-value!)))
 
 (defmethod editor-widget-for :default [v set-value!]
   (input "text" (pr-str v) (comp set-value! parse-edn)))
