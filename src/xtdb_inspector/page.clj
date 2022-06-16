@@ -84,6 +84,7 @@
     (h/html
      [:html
       [:head
+       [:meta {:charset "UTF-8"}]
        [:link {:rel "stylesheet" :href "/xtdb-inspector.css"}]
        [:style
         ".hover-trigger .hover-target { display: none; }"
