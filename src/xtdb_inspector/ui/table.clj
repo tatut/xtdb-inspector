@@ -109,8 +109,8 @@
        [::h/live order-source (partial header table-def
                                        #(do
                                           (when set-order!
-                                            (set-order! %)
-                                            (set-table-order! %)))) ]
+                                            (set-order! %))
+                                          (set-table-order! %))) ]
        (collection/live-collection
         {:render (partial render-row table-def)
          :key key
