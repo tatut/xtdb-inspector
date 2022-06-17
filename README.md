@@ -34,6 +34,11 @@ monitoring reporter in the XTDB node config:
 
 ## Changes
 
+### 2022-06-17
+- Tables now have filtering and ordering
+- Attribute values page limits to 100 items (with button to fetch more)
+- Remember last run query in editor page
+
 ### 2022-04-13
 - Add `java.time.Instant` display and editing
 - Allow adding new attributes and creating documents

@@ -13,6 +13,7 @@
             [xtdb-inspector.id :as id]
             [clojure.core.async :as async]))
 
+(def last-query (atom "{:find []\n :where []\n :limit 100}"))
 
 (def codemirror-js
   ["https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/codemirror.min.js"
@@ -45,6 +46,7 @@
     [ch result-count]))
 
 (defn- query! [xtdb-node set-state! query-str]
+  (reset! last-query query-str)
   (let [{:keys [q error]} (safe-read query-str)]
     (if error
       (set-state! {:error? true
@@ -243,11 +245,12 @@
               :in [name]}
          name)))
 
+
 (defn render [{:keys [xtdb-node request]}]
   (let [query-text (or
                     (some->> request :params :query
                              (saved-query-by-name (xt/db xtdb-node)))
-                    "{:find []\n :where []}")
+                    @last-query)
         [state set-state!] (source/use-state {:query nil
                                               :running? false
                                               :results nil
