@@ -16,32 +16,53 @@
       (keyword ns' kw'))))
 
 (defn- render-attr-values [{:keys [xtdb-node]} attr]
-  (let [values (rx/q {:node xtdb-node}
-                     {:find '[e v]
-                      :where [['e attr 'v]]
-                      :limit 1001})]
+  (let [[order set-order!] (source/use-state [:val :asc])
+        [limit-source set-limit!] (source/use-state 100)
+        values (source/computed
+                (fn [[order-by order-dir] limit]
+                  (with-open [db (xt/open-db xtdb-node)]
+                    (into []
+                          (map (fn [[e v]]
+                                 {:doc e
+                                  :val {:id? (id/valid-id? db v)
+                                        :v v}}))
+                          (xt/q db
+                                {:find '[e v]
+                                 :where [['e attr 'v]]
+                                 :order-by [[(case order-by
+                                               :doc 'e
+                                               :val 'v)
+                                             order-dir]]
+                                 :limit (inc limit)}))))
+                order limit-source)]
     (h/html
      [:div
-      [:table
-       [:thead
-        [:tr
-         [:td "Document"]
-         [:td "Value"]]]
-       [::h/live values
-        (fn [attr-values]
-          (with-open [db (xt/open-db xtdb-node)]
-            (h/html
-             [:tbody
-              [::h/for [[e v] (take 1000 attr-values)]
-               [:tr
-                [:td (ui/format-value (constantly true) e)]
-                [:td (ui/format-value (partial id/valid-id? db) v)]]]])))]]
-      [::h/live (source/c= (count %values))
-       (fn [c]
-         (h/html
-          [:div
-           [::h/when (> c 1000)
-            [:div.text-xs "Query limited to 1000 items"]]]))]])))
+      (ui.table/table
+       {:columns [{:label "Document" :accessor :doc
+                   :render (fn [doc]
+                             (ui/format-value (constantly true) doc))
+                   ;; Not sortable, ids are often values that don't
+                   ;; compare well (like maps or UUIDs)
+                   :order-by? false}
+                  {:label "Value" :accessor :val
+                   :render (fn [{:keys [id? v]}]
+                             (ui/format-value (constantly id?) v))}]
+        :set-order! set-order!
+        :key first}
+       values)
+      (h/html
+       [::h/live (source/computed
+                  (fn [values limit]
+                    {:count (count values)
+                     :limit limit}) values limit-source)
+        (fn [{:keys [count limit]}]
+          (h/html
+           [:div
+            [::h/when (> count limit)
+             [:div
+              [:div.text-xs "Query limited to " limit " items"]
+              [:button {:class "px-4 py-2 bg-indigo-50 outline-none border border-indigo-100 rounded text-indigo-500 font-medium active:scale-95 hover:bg-indigo-400 hover:text-white focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 disabled:bg-gray-400/80 disabled:shadow-none disabled:cursor-not-allowed transition-colors duration-200"
+                        :on-click #(set-limit! (* 2 limit))} "Fetch more results"]]]]))])])))
 
 (defn- render-attr-listing [{:keys [xtdb-node]}]
   (ui.table/table
