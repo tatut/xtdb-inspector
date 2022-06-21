@@ -2,11 +2,10 @@
   "Page to show attributes and browse their values."
   (:require [xtdb.api :as xt]
             [ripley.html :as h]
-            [ripley.js :as js]
             [xtdb-inspector.ui :as ui]
             [xtdb-inspector.ui.table :as ui.table]
+            [xtdb-inspector.util :refer [enc]]
             [ripley.live.source :as source]
-            [ripley.integration.xtdb :as rx]
             [xtdb-inspector.id :as id]))
 
 (defn- request-attr [request]
@@ -67,7 +66,7 @@
 (defn- render-attr-listing [{:keys [xtdb-node]}]
   (ui.table/table
    {:columns [{:label "Attribute" :accessor first
-               :render #(ui/link (str "/attr/" (subs (str %) 1))
+               :render #(ui/link (str "/attr/" (enc (subs (str %) 1)))
                                  (pr-str %))}
               {:label "Values count" :accessor second}]
     :key first

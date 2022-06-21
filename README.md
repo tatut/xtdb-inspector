@@ -34,6 +34,9 @@ monitoring reporter in the XTDB node config:
 
 ## Changes
 
+### 2022-06-21
+- FIXED Attribute name in URL is encoded, so attributes with URL characters (like ?) work
+
 ### 2022-06-17
 - Tables now have filtering and ordering
 - Attribute values page limits to 100 items (with button to fetch more)

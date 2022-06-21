@@ -1,8 +1,8 @@
 (ns xtdb-inspector.id
   "Handle document ids"
   (:require [xtdb.api :as xt]
-            [clojure.string :as str])
-  (:import (java.net URLEncoder)))
+            [xtdb-inspector.util :refer [enc]]
+            [clojure.string :as str]))
 
 
 (defn id-type?
@@ -46,11 +46,6 @@
 
     ;; Otherwise it's a string
     :else doc-id))
-
-(defn- enc [x]
-  (-> x
-      URLEncoder/encode
-      (str/replace "+" "%20")))
 
 (defn doc-id-param
   "Output doc-id as URL parameter"
