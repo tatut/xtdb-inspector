@@ -36,6 +36,7 @@ monitoring reporter in the XTDB node config:
 
 ### 2022-06-21
 - FIXED Attribute name in URL is encoded, so attributes with URL characters (like ?) work
+- Add convenience button to document page to copy the doc id to clipboard
 
 ### 2022-06-17
 - Tables now have filtering and ordering

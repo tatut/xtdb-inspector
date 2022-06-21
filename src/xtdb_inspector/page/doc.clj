@@ -202,7 +202,12 @@
         [show-history-source set-show-history!] (source/use-state false)]
     (h/html
      [:div
-      [:h3.bg-gray-300 "Document   " [:span.font-mono id-str]]
+      [:h3.bg-gray-300 "Document   "
+       [:spanfont-mono id-str]
+       [:input#doc-id {:style "display: none;" :disabled true :value id-str}]
+       [:button.mx-2.px-2.rounded-full.bg-blue-200
+        {:on-click "s=document.getElementById('doc-id');s.select();navigator.clipboard.writeText(s.value);"}
+        "copy"]]
       [:table.font-mono {:class "w-9/12"}
        [:thead
         [:tr
