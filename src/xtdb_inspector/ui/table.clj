@@ -13,6 +13,19 @@
   (str/includes? (str/lower-case (pr-str item))
                  (str/lower-case text)))
 
+(def comparator
+  (reify java.util.Comparator
+    (compare [_ o1 o2]
+      (if (and (instance? java.lang.Comparable o1)
+               (= (type o1) (type o2)))
+        ;; Compare comparables of the same type
+        (.compareTo o1 o2)
+
+        ;; Fallback to comparing string representations
+        (let [s1 (pr-str o1)
+              s2 (pr-str o2)]
+          (.compareTo s1 s2))))))
+
 (defn- filter-items [ordered-source? filter-fn items text [order-by order-direction]]
   (let [items (into []
                     (filter #(filter-fn % text))
@@ -21,7 +34,7 @@
       ((case order-direction
          :asc identity
          :desc reverse)
-       (sort-by order-by items))
+       (sort-by order-by comparator items))
       items)))
 
 

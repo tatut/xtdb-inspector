@@ -15,10 +15,9 @@
       (keyword ns' kw'))))
 
 (defn- render-attr-values [{:keys [xtdb-node]} attr]
-  (let [[order set-order!] (source/use-state [:val :asc])
-        [limit-source set-limit!] (source/use-state 100)
+  (let [[limit-source set-limit!] (source/use-state 100)
         values (source/computed
-                (fn [[order-by order-dir] limit]
+                (fn [limit]
                   (with-open [db (xt/open-db xtdb-node)]
                     (into []
                           (map (fn [[e v]]
@@ -28,25 +27,17 @@
                           (xt/q db
                                 {:find '[e v]
                                  :where [['e attr 'v]]
-                                 :order-by [[(case order-by
-                                               :doc 'e
-                                               :val 'v)
-                                             order-dir]]
                                  :limit (inc limit)}))))
-                order limit-source)]
+                limit-source)]
     (h/html
      [:div
       (ui.table/table
        {:columns [{:label "Document" :accessor :doc
                    :render (fn [doc]
-                             (ui/format-value (constantly true) doc))
-                   ;; Not sortable, ids are often values that don't
-                   ;; compare well (like maps or UUIDs)
-                   :order-by? false}
+                             (ui/format-value (constantly true) doc))}
                   {:label "Value" :accessor :val
                    :render (fn [{:keys [id? v]}]
                              (ui/format-value (constantly id?) v))}]
-        :set-order! set-order!
         :key first}
        values)
       (h/html
