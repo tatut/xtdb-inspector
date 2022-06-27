@@ -117,10 +117,15 @@
                      #(ui/format-value (constantly true) from))]]]]))
 
 
-(defn- update-doc! [xtdb-node entity attribute value]
+(defn- update-doc! [xtdb-node entity-id attribute value]
   ;; NOTE: this doesn't check if entity has changed
-  (xt/submit-tx xtdb-node
-                [[::xt/put (assoc entity attribute value)]]))
+  (xt/submit-tx
+   xtdb-node
+   [[::xt/put
+     (merge
+      (xt/entity (xt/db xtdb-node) entity-id)
+      {:xt/id entity-id ; if entity doesn't exist yet
+       attribute value})]]))
 
 (defn- attr-row [key-fn content-fn]
   (h/html
@@ -130,7 +135,7 @@
     [:td.px-2.py-2.hover-trigger
      (content-fn)]]))
 
-(defn new-attr-row [xtdb-node entity]
+(defn new-attr-row [xtdb-node id]
   (let [[rerender-source set-rerender!] (source/use-state 0)
         rerender! #(set-rerender! (inc (p/current-value rerender-source)))]
     (h/html
@@ -169,12 +174,10 @@
                     (ui/editor-widget-for
                      type ::ui/empty
                      (fn [to]
-                       (println "update-doc "  (p/current-value attr-name) " => " (pr-str to))
                        (rerender!)
-                       (update-doc! xtdb-node entity
+                       (update-doc! xtdb-node id
                                     (ui/parse-edn (p/current-value attr-name))
-                                    to)))))]
-               ])))))])))
+                                    to)))))]])))))])))
 
 (declare render-doc-data doc-source)
 
@@ -196,7 +199,7 @@
            (render-doc-data xtdb-node id (doc-source xtdb-node id))]
           [:script]])]])))
 
-(defn- render-editable-value [xtdb-node db entity-source [k v]]
+(defn- render-editable-value [xtdb-node db entity-id [k v]]
   (let [[edit? set-edit!] (source/use-state false)]
     (h/html
      [::h/live edit?
@@ -215,8 +218,7 @@
                  "edit"]]]]))
           (ui/editor-widget-for (type v) v
                                 (partial update-doc! xtdb-node
-                                         (p/current-value entity-source)
-                                         k))))])))
+                                         entity-id k))))])))
 
 (defn render-doc-id-header [id]
   (let [id-str (pr-str id)]
@@ -235,9 +237,9 @@
               {:label "Value" :accessor val
                :render-full (partial render-editable-value xtdb-node
                                      (xt/db xtdb-node)
-                                     entity-source)}]
+                                     id)}]
     :order [key :asc]
-    :render-after #(new-attr-row xtdb-node (p/current-value entity-source))}
+    :render-after #(new-attr-row xtdb-node id)}
    (source/computed
     (comp seq #(dissoc % :xt/id))
     entity-source)))
