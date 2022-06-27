@@ -9,7 +9,8 @@
             [ripley.js :as js]
             [ripley.integration.xtdb :as rx]
             [ripley.live.protocols :as p]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [xtdb-inspector.ui.table :as ui.table])
   (:import (java.time LocalDate LocalTime)))
 
 ;; PENDING: we could have a live collection
@@ -124,97 +125,98 @@
 (defn- attr-row [key-fn content-fn]
   (h/html
    [:tr.hover:bg-gray-100
-    [:td.px-2.py-2.font-semibold {:class "w-1/3"}
+    [:td.px-2.py-2.font-semibold.align-top {:class "w-1/3"}
      (key-fn)]
     [:td.px-2.py-2.hover-trigger
      (content-fn)]]))
 
 (defn new-attr-row [xtdb-node entity]
-  (let [[attr-name set-attr-name!] (source/use-state "")
-        [value-type set-value-type!] (source/use-state :not-set)
-        editor-types (-> ui/editor-widget-for
-                         methods
-                         (dissoc :default)
-                         keys)]
-    (attr-row
-     (fn []
-       ;; We don't want live component here, no need to rerender when it changes
-       (ui/input "text" "" set-attr-name!
-                 :placeholder "New attr kw"))
-     (fn []
-       (h/html
-        [:div.flex.justify-left
-         [:select {:on-change (js/js #(set-value-type!
-                                       (or (first (filter (fn [t]
-                                                            (= % (ui/short-class-name t)))
-                                                          editor-types))
-                                           :edn))
-                                     "event.target.value")}
-          [:option {:value ""} " -- select -- "]
-          [:option {:value "EDN"} "EDN"]
-          [::h/for [cls editor-types
-                    :let [class-name (ui/short-class-name cls)]]
-           [:option {:value class-name} class-name]]]
-         [::h/live value-type
-          (fn [type]
-            (if (= type :not-set)
-              (h/html [:span ""])
-              (ui/editor-widget-for
-               type ::ui/empty
-               (fn [to]
-                 (println "update-doc "  (p/current-value attr-name) " => " (pr-str to))
-                 (update-doc! xtdb-node entity
-                              (ui/parse-edn (p/current-value attr-name))
-                              to)))))]
-         ])))))
+  (let [[rerender-source set-rerender!] (source/use-state 0)
+        rerender! #(set-rerender! (inc (p/current-value rerender-source)))]
+    (h/html
+     [::h/live
+      rerender-source
+      (fn [_]
+        (let [[attr-name set-attr-name!] (source/use-state "")
+              [value-type set-value-type!] (source/use-state :not-set)
+              editor-types (-> ui/editor-widget-for
+                               methods
+                               (dissoc :default)
+                               keys)]
+          (attr-row
+           (fn []
+             ;; We don't want live component here, no need to rerender when it changes
+             (ui/input "text" "" set-attr-name!
+                       :placeholder "New attr kw"))
+           (fn []
+             (h/html
+              [:div.flex.justify-left
+               [:select {:on-change (js/js #(set-value-type!
+                                             (or (first (filter (fn [t]
+                                                                  (= % (ui/short-class-name t)))
+                                                                editor-types))
+                                                 :edn))
+                                           "event.target.value")}
+                [:option {:value ""} " -- select -- "]
+                [:option {:value "EDN"} "EDN"]
+                [::h/for [cls editor-types
+                          :let [class-name (ui/short-class-name cls)]]
+                 [:option {:value class-name} class-name]]]
+               [::h/live value-type
+                (fn [type]
+                  (if (= type :not-set)
+                    (h/html [:span ""])
+                    (ui/editor-widget-for
+                     type ::ui/empty
+                     (fn [to]
+                       (println "update-doc "  (p/current-value attr-name) " => " (pr-str to))
+                       (rerender!)
+                       (update-doc! xtdb-node entity
+                                    (ui/parse-edn (p/current-value attr-name))
+                                    to)))))]
+               ])))))])))
 
 (declare render-doc-data doc-source)
 
 (defn- inline-doc-view
   "Component to allow drilling down to nested documents inline without
   navigating to them."
-  [xtdb-node db id]
+  [xtdb-node _db id]
   (let [[show set-show!] (source/use-state false)]
     (h/html
      [:div.inline-doc-view
       [::h/live show
-       #(h/html [:button {:on-click (partial set-show! (not %))}
+       #(h/html [:button.rounded-none.bg-blue-500.mx-2.px-1
+                 {:on-click (partial set-show! (not %))}
                  [::h/if % "-" "+"]])]
       [::h/live show
        #(h/html
          [::h/if %
-          [:div
+          [:div.ml-2
            (render-doc-data xtdb-node id (doc-source xtdb-node id))]
           [:script]])]])))
 
-(defn- render-entity-attrs [xtdb-node entity]
-  (let [db (xt/db xtdb-node)]
+(defn- render-editable-value [xtdb-node db entity-source [k v]]
+  (let [[edit? set-edit!] (source/use-state false)]
     (h/html
-     [:tbody
-      [::h/for [[k v] (dissoc entity :xt/id)
-                :let [key-name (pr-str k)
-                      [edit? set-edit!] (source/use-state false)]]
-       (attr-row
-        #(h/out!  key-name)
-        (fn []
-          (h/html
-           [::h/live edit?
-            (fn [edit?]
-              (if-not edit?
-                (let [id (id/valid-id? db v)]
-                  (h/html
-                   [:div
-                    [:div.flex.justify-between
-                     (ui/format-value (constantly id) v)
-                     [:button.hover-target
-                      {:on-click #(set-edit! true)}
-                      "edit"]]
-                    (when id
-                      (inline-doc-view xtdb-node db v))]))
-                (ui/editor-widget-for (type v) v (partial update-doc! xtdb-node entity k))))])))]
-
-      ;; Add new attribute
-      (new-attr-row xtdb-node entity)])))
+     [::h/live edit?
+      (fn [edit?]
+        (if-not edit?
+          (let [id (id/valid-id? db v)]
+            (h/html
+             [:div.hover-trigger
+              [:div.flex
+               (ui/format-value (constantly id) v)
+               (when id
+                 (inline-doc-view xtdb-node db v))
+               [:div.flex-grow.flex.justify-end.items-start
+                [:button.hover-target
+                 {:on-click #(set-edit! true)}
+                 "edit"]]]]))
+          (ui/editor-widget-for (type v) v
+                                (partial update-doc! xtdb-node
+                                         (p/current-value entity-source)
+                                         k))))])))
 
 (defn render-doc-id-header [id]
   (let [id-str (pr-str id)]
@@ -227,21 +229,25 @@
        "copy"]])))
 
 (defn- render-doc-data [xtdb-node id entity-source]
-  (h/html
-   [:div
-    [:table.font-mono {:class "w-9/12"}
-     [:thead
-      [:tr
-       [:td "Attribute"]
-       [:td "Value"]]]
-     [::h/live (source/c= (merge {:xt/id id}
-                                 (ffirst %entity-source)))
-      (partial render-entity-attrs xtdb-node)]]]))
+  (ui.table/table
+   {:key key
+    :columns [{:label "Attribute" :accessor key}
+              {:label "Value" :accessor val
+               :render-full (partial render-editable-value xtdb-node
+                                     (xt/db xtdb-node)
+                                     entity-source)}]
+    :order [key :asc]
+    :render-after #(new-attr-row xtdb-node (p/current-value entity-source))}
+   (source/computed
+    (comp seq #(dissoc % :xt/id))
+    entity-source)))
 
 (defn doc-source [xtdb-node id]
-  (rx/q {:node xtdb-node}
-        '{:find [(pull e [*])]
-          :in [e]} id))
+  (source/computed
+   ffirst
+   (rx/q {:node xtdb-node}
+         '{:find [(pull e [*])]
+           :in [e]} id)))
 
 (defn render [{:keys [xtdb-node request] :as _ctx}]
   (let [id (some-> request :params :doc-id id/read-doc-id)

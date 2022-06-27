@@ -13,7 +13,7 @@
   (str/includes? (str/lower-case (pr-str item))
                  (str/lower-case text)))
 
-(def comparator
+(def generic-comparator
   (reify java.util.Comparator
     (compare [_ o1 o2]
       (if (and (instance? java.lang.Comparable o1)
@@ -34,19 +34,20 @@
       ((case order-direction
          :asc identity
          :desc reverse)
-       (sort-by order-by comparator items))
+       (sort-by order-by generic-comparator items))
       items)))
 
-
-(defn- render-row [{:keys [columns]} row]
-  (h/html
-   [:tr
-    [::h/for [{:keys [accessor render]} columns
-              :let [data (accessor row)
-                    data (if render data (str data))]]
-     [::h/if render
-      [:td (render data)]
-      [:td data]]]]))
+(defn- render-row [{:keys [columns row-class]} row]
+  (let [cls (or row-class "odd:bg-white even:bg-gray-100")]
+    (h/html
+     [:tr {:class cls}
+      [::h/for [{:keys [accessor render render-full]} columns
+                :let [data (accessor row)]]
+       [:td.align-top
+        (cond
+          render-full (render-full row)
+          render (render data)
+          :else (h/out! (str data)))]]])))
 
 (defn- filter-input [set-filter!]
   (let [id (str (gensym "table-filter"))]
@@ -68,10 +69,10 @@
     [:tr
      [::h/for [{:keys [label accessor order-by?]
                 :or {order-by? true}} columns]
-      [:th {:on-click #(when order-by?
-                         (set-order! [accessor (case order-direction
-                                                 :asc :desc
-                                                 :desc :asc)]))}
+      [:th.text-left {:on-click #(when order-by?
+                                   (set-order! [accessor (case order-direction
+                                                           :asc :desc
+                                                           :desc :asc)]))}
        label
        (when (and (= order-by accessor))
          (h/out! (case order-direction
@@ -87,8 +88,15 @@
 
   :columns    collection of columns for the table. Each column is a map
               containing at least :label and :accessor.
+
               Column may contain :render which is called to render the value.
               Default render just stringifies the value.
+
+              The :render function is called with just the value.
+              To pass the whole row to the render function, use :render-full
+              instead.
+
+
               If :order-by? is false, then this column can't be ordered by.
 
               Example: [{:label \"Name\" :accessor :name}
@@ -105,8 +113,11 @@
               it should handle the ordering in the query.
               If not set, the items are ordered by using clojure builtin
               `sort-by` function.
+
+  :row-class  class to apply to rows
+              defaults to slightly striped coloring of alternate rows
   "
-  [{:keys [key filter-fn order set-order!]
+  [{:keys [key filter-fn order set-order! render-after]
               :or {filter-fn default-filter-fn
                    key identity
                    order [nil :asc]} :as table-def} data-source]
@@ -116,16 +127,18 @@
                      (partial filter-items (some? set-order!) filter-fn)
                      data-source filter-source order-source)]
     (h/html
-     [:div.mx-2
+     [:div.mx-2.font-mono
       (filter-input set-filter!)
       [:table.table-auto
        [::h/live order-source (partial header table-def
                                        #(do
                                           (when set-order!
                                             (set-order! %))
-                                          (set-table-order! %))) ]
+                                          (set-table-order! %)))]
        (collection/live-collection
         {:render (partial render-row table-def)
          :key key
          :container-element :tbody
-         :source rows-source})]])))
+         :source rows-source})
+       (when render-after
+         (render-after))]])))

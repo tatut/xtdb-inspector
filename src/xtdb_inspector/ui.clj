@@ -14,7 +14,7 @@
 
 (defn link [href title]
   (h/html
-   [:a.underline.bg-blue-200 {:href href} title]))
+   [:a.underline.bg-blue-200.px-1 {:href href} title]))
 
 ;; Method to display (as human readable), should return string
 (defmulti display (fn [value] (type value)))
