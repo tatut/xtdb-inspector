@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "postcss-cli": "^8.3.1",
-    "tailwindcss": "^2.2.7"
+    "tailwindcss": "^3.1.4"
   },
   "scripts": {
     "tailwind": "tailwindcss -i resources/xtdb-inspector.css -o resources/public/xtdb-inspector.css --watch"
