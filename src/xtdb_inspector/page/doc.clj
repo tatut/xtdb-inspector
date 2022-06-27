@@ -274,7 +274,6 @@
 (defn render-form [ctx]
   (let [doc (atom nil)
         set-doc! (fn [value]
-                   (println "value ois: " value)
                    (binding [*read-eval* false]
                      (reset! doc (read-string value))))]
     (h/html
@@ -288,5 +287,7 @@
       [:span.font-light
        "Examples: 123  :hello  \"some-doc\" "]
       (js/eval-js-from-source
-       (source/c= (str "window.location.pathname += \"/"
-                       (id/doc-id-param %doc) "\"")))]))  )
+       (source/c=
+        (when %doc
+          (str "window.location.pathname += \"/"
+               (id/doc-id-param %doc) "\""))))]))  )
