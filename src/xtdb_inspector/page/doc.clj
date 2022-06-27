@@ -168,6 +168,25 @@
                               to)))))]
          ])))))
 
+(declare render-doc-data doc-source)
+
+(defn- inline-doc-view
+  "Component to allow drilling down to nested documents inline without
+  navigating to them."
+  [xtdb-node db id]
+  (let [[show set-show!] (source/use-state false)]
+    (h/html
+     [:div.inline-doc-view
+      [::h/live show
+       #(h/html [:button {:on-click (partial set-show! (not %))}
+                 [::h/if % "-" "+"]])]
+      [::h/live show
+       #(h/html
+         [::h/if %
+          [:div
+           (render-doc-data xtdb-node id (doc-source xtdb-node id))]
+          [:script]])]])))
+
 (defn- render-entity-attrs [xtdb-node entity]
   (let [db (xt/db xtdb-node)]
     (h/html
@@ -182,40 +201,56 @@
            [::h/live edit?
             (fn [edit?]
               (if-not edit?
-                (h/html
-                 [:div.flex.justify-between
-                  (ui/format-value (partial id/valid-id? db) v)
-                  [:button.hover-target
-                   {:on-click #(set-edit! true)}
-                   "edit"]])
+                (let [id (id/valid-id? db v)]
+                  (h/html
+                   [:div
+                    [:div.flex.justify-between
+                     (ui/format-value (constantly id) v)
+                     [:button.hover-target
+                      {:on-click #(set-edit! true)}
+                      "edit"]]
+                    (when id
+                      (inline-doc-view xtdb-node db v))]))
                 (ui/editor-widget-for (type v) v (partial update-doc! xtdb-node entity k))))])))]
 
       ;; Add new attribute
       (new-attr-row xtdb-node entity)])))
 
+(defn render-doc-id-header [id]
+  (let [id-str (pr-str id)]
+    (h/html
+     [:h3.bg-gray-300 "Document   "
+      [:span.font-mono id-str]
+      [:input#doc-id {:style "display: none;" :disabled true :value id-str}]
+      [:button.mx-2.px-2.rounded-full.bg-blue-200
+       {:on-click "s=document.getElementById('doc-id');s.select();navigator.clipboard.writeText(s.value);"}
+       "copy"]])))
+
+(defn- render-doc-data [xtdb-node id entity-source]
+  (h/html
+   [:div
+    [:table.font-mono {:class "w-9/12"}
+     [:thead
+      [:tr
+       [:td "Attribute"]
+       [:td "Value"]]]
+     [::h/live (source/c= (merge {:xt/id id}
+                                 (ffirst %entity-source)))
+      (partial render-entity-attrs xtdb-node)]]]))
+
+(defn doc-source [xtdb-node id]
+  (rx/q {:node xtdb-node}
+        '{:find [(pull e [*])]
+          :in [e]} id))
+
 (defn render [{:keys [xtdb-node request] :as _ctx}]
   (let [id (some-> request :params :doc-id id/read-doc-id)
-        entity-source (rx/q {:node xtdb-node}
-                            '{:find [(pull e [*])]
-                              :in [e]} id)
-        id-str (pr-str id)
+        entity-source (doc-source xtdb-node id)
         [show-history-source set-show-history!] (source/use-state false)]
     (h/html
      [:div
-      [:h3.bg-gray-300 "Document   "
-       [:spanfont-mono id-str]
-       [:input#doc-id {:style "display: none;" :disabled true :value id-str}]
-       [:button.mx-2.px-2.rounded-full.bg-blue-200
-        {:on-click "s=document.getElementById('doc-id');s.select();navigator.clipboard.writeText(s.value);"}
-        "copy"]]
-      [:table.font-mono {:class "w-9/12"}
-       [:thead
-        [:tr
-         [:td "Attribute"]
-         [:td "Value"]]]
-       [::h/live (source/c= (merge {:xt/id id}
-                                   (ffirst %entity-source)))
-        (partial render-entity-attrs xtdb-node)]]
+      (render-doc-id-header id)
+      (render-doc-data xtdb-node id entity-source)
 
       [:h3.bg-gray-300 "Links from other documents"]
       [::h/live (future (links-to xtdb-node id))
