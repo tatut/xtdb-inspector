@@ -1,9 +1,8 @@
 module.exports = {
-    purge: {
+    content: {
         enabled: true,
         content: ['./src/**/*.clj'],
     },
-    darkMode: false, // or 'media' or 'class'
     theme: {
         extend: {
             colors: {
