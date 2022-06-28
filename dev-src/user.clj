@@ -91,3 +91,10 @@
   )
 
 (defn db [] (xt/db @xtdb))
+
+(defn -main [& _args]
+  (println "Starting main for testing")
+  (start)
+  (some-docs)
+  ;; We are in the background, so sleep until tests are done
+  (Thread/sleep (* 1000 60 15)))
