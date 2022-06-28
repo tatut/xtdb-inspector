@@ -19,6 +19,7 @@ describe('doc page',()=>{
         cy.get('input[placeholder="New attr kw"]').type(':test-attr');
         cy.get('select').select('EDN');
         cy.get('input[placeholder="EDN"]').type('"hello cypress"').blur();
+        cy.wait(500);
         cy.get('td').contains(':test-attr');
         cy.get('td').contains('"hello cypress"');
     });
