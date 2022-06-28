@@ -19,8 +19,7 @@ describe('Query page', () => {
         cy.get('#save-query-as').type('test-query');
         cy.get('button').contains('Save').click();
         cy.window().then(win => win.editor.setValue(''));
-        cy.waitUntil(() => cy.get('option').contains('test-query'));
-        cy.wait(100);
+        cy.wait(500);
         cy.get('select').select('test-query');
         cy.get('.CodeMirror textarea').should('have.value', q);
     });
