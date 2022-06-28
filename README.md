@@ -1,4 +1,7 @@
 # xtdb-inspector
+
+![test workflow](https://github.com/tatut/xtdb-inspector/actions/workflows/test.yml/badge.svg)
+
 Web UI for inspecting XTDB database
 
 Demo:
