@@ -74,13 +74,14 @@
   (let [id (str (gensym "edit"))]
     (h/html
      [:div
-      [:input.w-full {:autofocus true
-                      :type type
-                      :value initial-value
-                      :placeholder (or placeholder "")
-                      :id id
-                      :on-key-press "if(event.keyCode==13) event.target.blur()"
-                      :on-blur (js/js set-value! (js/input-value id))}]])))
+      [:input.w-full
+       {:autofocus true
+        :type type
+        :value initial-value
+        :placeholder (or placeholder "")
+        :id id
+        :on-key-press "if(event.keyCode==13) event.target.blur()"
+        :on-blur (js/js set-value! (js/input-value id))}]])))
 
 (defn- format-for-edit [formatter value]
   (if (= value ::empty)
@@ -118,4 +119,5 @@
          #(-> % Instant/parse set-value!)))
 
 (defmethod editor-widget-for :default [_ v set-value!]
-  (input "text" (format-for-edit pr-str v) (comp set-value! parse-edn)))
+  (input "text" (format-for-edit pr-str v) (comp set-value! parse-edn)
+         :placeholder "EDN"))
