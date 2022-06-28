@@ -99,7 +99,7 @@
        [:div.flex
         [:div.flex-grow
          (page-content-fn)]
-        #_[:div {:class "w-2/6"}
+        [:div {:class "w-2/6"}
          (metrics/metrics-ui ctx)]]]])))
 
 (defn page-response [ctx page-content-fn]
