@@ -7,7 +7,8 @@
             [ripley.live.source :as source]
             [clojure.string :as str]
             [xtdb-inspector.id :as id]
-            [xtdb-inspector.ui :as ui]))
+            [xtdb-inspector.ui :as ui]
+            [ripley.live.protocols :as p]))
 
 (defn app-bar [ctx search!]
   ;; HTML adapted from https://tailwindcomponents.com/component/responsive-navbar-2
@@ -82,7 +83,8 @@
           [:td (ui/format-value (constantly false) v)]]]]]])))
 
 (defn render-page [{:keys [xtdb-node] :as ctx} page-content-fn]
-  (let [[results set-results!] (source/use-state nil)]
+  (let [[results set-results!] (source/use-state nil)
+        [show-metrics? set-show-metrics!] (source/use-state false)]
     (h/out! "<!DOCTYPE html>\n")
     (h/html
      [:html
@@ -96,11 +98,17 @@
       [:body
        (app-bar ctx (partial lucene-search! xtdb-node set-results!))
        [::h/live results render-lucene-results]
-       [:div.flex
-        [:div.flex-grow
-         (page-content-fn)]
-        [:div {:class "w-2/6"}
-         (metrics/metrics-ui ctx)]]]])))
+       [:div.page
+        (page-content-fn)]
+       [::h/live show-metrics?
+        (fn [show?]
+          (h/html
+           [:div.flex.flex-col.justify-end.items-end.fixed
+            {:style "bottom: 0.2rem; right: 0.2rem;"}
+            [::h/when show?
+             (metrics/metrics-ui ctx)]
+            [:button {:on-click #(set-show-metrics! (not show?))}
+             [::h/if show? "- hide metrics" "+ show metrics"]]]))]]])))
 
 (defn page-response [ctx page-content-fn]
   (h/render-response

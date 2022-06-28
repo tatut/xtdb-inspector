@@ -15,8 +15,7 @@
 (def ^:private executor (Executors/newScheduledThreadPool 1))
 
 (defn- report [^MetricRegistry registry]
-  {:updated (java.util.Date.)
-   :gauges
+  {:gauges
    (into {}
          (let [g (.getGauges registry)]
            (for [k (keys g)
@@ -57,36 +56,43 @@
    ["attr vals" "xtdb.index-store.indexed-avs"]
    ["docs" "xtdb.index-store.indexed-docs"]])
 
-(defn render-meters [title meters-to-render meter-values]
+(defn render-meters [title meters-to-render metrics-source]
   (letfn [(fmt [n]
-            (h/dyn! (format "%.1f" n)))]
+            (let [formatted (format "%.1f" n)]
+              (h/html [:span formatted])))
+          (meter-source [meter-name time-frame]
+            (source/computed
+             #(get-in % [:meters meter-name time-frame])
+             metrics-source))]
     (h/html
      [:div.meters
-      [:table.w-full.text-right
+      [:table.w-full.text-right.border.border-collapse.border-gray-500
        [:tr.bg-gray-300
-        [:td title]
-        [:td "1m"]
-        [:td "5m"]
-        [:td "15m"]
-        [:td "cnt"]]
-       [::h/for [[label meter-name] meters-to-render
-                 :let [m (get meter-values meter-name)
-                       c (str (:count m))]]
+        [:td.border.border-collapse.border-gray-500 title]
+        [:td.border.border-collapse.border-gray-500 "1m"]
+        [:td.border.border-collapse.border-gray-500 "5m"]
+        [:td.border.border-collapse.border-gray-500 "15m"]
+        [:td.border.border-collapse.border-gray-500 "cnt"]]
+       [::h/for [[label meter-name] meters-to-render]
         [:tr
-         [:td label]
-         [:td (fmt (:min1 m))]
-         [:td (fmt (:min5 m))]
-         [:td (fmt (:min15 m))]
-         [:td.font-semibold c]]]]])))
+         [:td.border.border-collapse.border-gray-500 label]
+         [:td.border.border-collapse.border-gray-500
+          [::h/live (meter-source meter-name :min1) fmt]]
+         [:td.border.border-collapse.border-gray-500
+          [::h/live (meter-source meter-name :min5) fmt]]
+         [:td.border.border-collapse.border-gray-500
+          [::h/live (meter-source meter-name :min15) fmt]]
+         [:td.border.border-collapse.border-gray-500.font-semibold
+          [::h/live (meter-source meter-name :count)
+           #(h/html [:span %])]]]]]])))
 
 
 (defn metrics-ui [ctx]
   (let [ms (source/source metrics)]
     (h/html
-     [:div.metrics.flex-col.bg-gray-50.rounded-md.border-2.border-black.m-3.p-3.text-sm
+     [:div.metrics.flex-col.bg-gray-50.rounded-md.border-2.border-black.m-1.p-1.text-sm
       [:div
-       [::h/live (source/c= (:meters %ms))
-        (partial render-meters "Indexed" idx-meters-to-render)]
+       (render-meters "Indexed" idx-meters-to-render ms)
 
        [:div {:class "px-4 py-2 mt-4 text-lg text-gray-900 bg-gray-200 rounded-lg sm:mt-0 hover:text-gray-900 focus:text-gray-900 hover:bg-gray-300"}
         [::h/live (source/c= (get-in %ms [:gauges "xtdb.query.currently-running"]))
