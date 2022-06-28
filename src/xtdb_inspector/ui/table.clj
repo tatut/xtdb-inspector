@@ -37,13 +37,16 @@
        (sort-by order-by generic-comparator items))
       items)))
 
-(defn- render-row [{:keys [columns row-class]} row]
-  (let [cls (or row-class "odd:bg-white even:bg-gray-100")]
+(defn- render-row [{:keys [columns row-class on-row-click]} row]
+  (let [cls (str (or row-class "odd:bg-white even:bg-gray-100")
+                 (when on-row-click
+                   " cursor-pointer"))]
     (h/html
-     [:tr {:class cls}
+     [:tr {:class cls :on-click (when on-row-click
+                                  #(on-row-click row))}
       [::h/for [{:keys [accessor render render-full]} columns
                 :let [data (accessor row)]]
-       [:td.align-top
+       [:td.align-top.px-2
         (cond
           render-full (render-full row)
           render (render data)
@@ -116,8 +119,12 @@
 
   :row-class  class to apply to rows
               defaults to slightly striped coloring of alternate rows
+
+  :on-row-click
+              Add optional callback to when the row is clicked.
+              The function is called with the full row data.
   "
-  [{:keys [key filter-fn order set-order! render-after]
+  [{:keys [key filter-fn order set-order! render-after empty-message]
               :or {filter-fn default-filter-fn
                    key identity
                    order [nil :asc]} :as table-def} data-source]
@@ -135,6 +142,16 @@
                                           (when set-order!
                                             (set-order! %))
                                           (set-table-order! %)))]
+       [::h/when empty-message
+        [::h/live (source/computed empty? rows-source)
+         #(let [cols (count (:columns table-def))]
+            (h/html
+             [:tbody
+              [::h/when %
+               [:tr
+                [:td {:colspan cols}
+                 empty-message]]]]))]]
+
        (collection/live-collection
         {:render (partial render-row table-def)
          :key key

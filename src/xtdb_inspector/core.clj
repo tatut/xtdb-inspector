@@ -8,6 +8,7 @@
             [xtdb-inspector.page.doc :as page.doc]
             [xtdb-inspector.page.query :as page.query]
             [xtdb-inspector.page.attr :as page.attr]
+            [xtdb-inspector.page.tx :as page.tx]
             [ripley.live.context :as context]))
 
 
@@ -35,6 +36,8 @@
           (page ctx req #'page.attr/render))
      (GET "/attr/:namespace/:keyword" req
           (page ctx req #'page.attr/render))
+     (GET "/tx" req
+          (page ctx req #'page.tx/render))
      (route/resources "/"))))
 
 

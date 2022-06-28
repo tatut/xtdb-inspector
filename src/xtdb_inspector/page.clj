@@ -26,7 +26,10 @@
        "Documents"]
       [:a.block.mt-4.lg:inline-block.lg:mt-0.hover:text-white.px-4.py-2.rounded.hover:bg-blue-700.mr-2
        {:href "/attr"}
-       "Attributes"]]
+       "Attributes"]
+      [:a.block.mt-4.lg:inline-block.lg:mt-0.hover:text-white.px-4.py-2.rounded.hover:bg-blue-700.mr-2
+       {:href "/tx"}
+       "Transactions"]]
 
      [:div.relative.mx-auto.text-gray-600.lg:block.hidden
       [:input#lucene-search.border-2.border-gray-300.bg-white.h-10.pl-2.pr-8.rounded-lg.text-sm.focus:outline-none
@@ -96,7 +99,7 @@
        [:div.flex
         [:div.flex-grow
          (page-content-fn)]
-        [:div {:class "w-2/6"}
+        #_[:div {:class "w-2/6"}
          (metrics/metrics-ui ctx)]]]])))
 
 (defn page-response [ctx page-content-fn]
