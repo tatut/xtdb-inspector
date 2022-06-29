@@ -12,8 +12,6 @@
 
 (def metrics (atom {}))
 
-(def ^:private executor (Executors/newScheduledThreadPool 1))
-
 (defn- report [^MetricRegistry registry]
   {:gauges
    (into {}
@@ -36,13 +34,15 @@
                               :metrics ::metrics/metrics}
                   :sys/args {}}
   [{reg :registry}]
-  (let [^Future task
-        (.scheduleAtFixedRate ^ScheduledExecutorService executor
+  (let [^ScheduledExecutorService executor (Executors/newScheduledThreadPool 1)
+        ^Future task
+        (.scheduleAtFixedRate executor
                               #(reset! metrics (report reg))
                               1 1 TimeUnit/SECONDS)]
     (reify java.lang.AutoCloseable
       (close [_]
         (.cancel task true)
+        (.shutdownNow executor)
         (reset! metrics {})))))
 
 
