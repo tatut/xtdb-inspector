@@ -12,7 +12,8 @@
   (h/html [:span.text-lime-500 "\"" str "\""]))
 
 (defmethod render java.lang.Number [_ctx num]
-  (h/html [:span.text-red-300 num]))
+  (let [str (pr-str num)]
+    (h/html [:span.text-red-300 str])))
 
 (defmethod render clojure.lang.Keyword [_ctx kw]
   (let [str (pr-str kw)]
