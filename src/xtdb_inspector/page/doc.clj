@@ -10,7 +10,8 @@
             [ripley.integration.xtdb :as rx]
             [ripley.live.protocols :as p]
             [clojure.java.io :as io]
-            [xtdb-inspector.ui.table :as ui.table])
+            [xtdb-inspector.ui.table :as ui.table]
+            [xtdb-inspector.ui.edn :as ui.edn])
   (:import (java.time LocalDate LocalTime)))
 
 ;; PENDING: we could have a live collection
@@ -213,7 +214,7 @@
                (when id
                  (inline-doc-view xtdb-node db v))
                [:div.flex-grow.flex.justify-end.items-start
-                [:button.hover-target
+                [:button.hover-target.fixed.bg-blue-500.rounded.px-1
                  {:on-click #(set-edit! true)}
                  "edit"]]]]))
           (ui/editor-widget-for (type v) v
@@ -233,7 +234,8 @@
 (defn- render-doc-data [xtdb-node id entity-source]
   (ui.table/table
    {:key key
-    :columns [{:label "Attribute" :accessor key}
+    :columns [{:label "Attribute" :accessor key
+               :render ui.edn/edn}
               {:label "Value" :accessor val
                :render-full (partial render-editable-value xtdb-node
                                      (xt/db xtdb-node)

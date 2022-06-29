@@ -5,7 +5,8 @@
             [xtdb-inspector.ui :as ui]
             [xtdb-inspector.ui.table :as ui.table]
             [ripley.live.source :as source]
-            [ripley.live.protocols :as p]))
+            [ripley.live.protocols :as p]
+            [xtdb-inspector.ui.edn :as ui.edn]))
 
 (defn latest-tx-source [xtdb-node]
   (let [source-atom (atom nil)
@@ -79,7 +80,8 @@
    {:columns [{:label "Op" :accessor :operation :render #(h/out! (name %))}
               {:label "Document" :accessor :id
                :render #(ui/format-value (constantly true) %)}
-              {:label "Payload" :accessor :payload}
+              {:label "Payload" :accessor :payload
+               :render ui.edn/edn}
               {:label "vt-start" :accessor :valid-time-start}
               {:label "vt-end" :accessor :valid-time-end}]
     :empty-message "Click on transaction to show details"}

@@ -37,6 +37,13 @@ monitoring reporter in the XTDB node config:
 
 ## Changes
 
+### 2022-06-29
+- Pretty print EDN values (better coloring and layout)
+
+### 2022-06-27
+- Add new page for transaction log
+- Document view can expand linked docs inline
+
 ### 2022-06-21
 - FIXED Attribute name in URL is encoded, so attributes with URL characters (like ?) work
 - Add convenience button to document page to copy the doc id to clipboard

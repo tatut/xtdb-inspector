@@ -3,7 +3,8 @@
   (:require [xtdb-inspector.id :as id]
             [ripley.html :as h]
             [clojure.string :as str]
-            [ripley.js :as js])
+            [ripley.js :as js]
+            [xtdb-inspector.ui.edn :as ui.edn])
   (:import (java.time LocalDate LocalTime LocalDateTime Duration Instant)
            (java.time.format DateTimeFormatter FormatStyle)))
 
@@ -53,18 +54,22 @@
     (let [href (when (is-id? value)
                  (str "/doc/" (id/doc-id-param value)))
           disp (display value)
-          stringified (if (= ::no-custom-display disp)
+          custom-display? (not= ::no-custom-display disp)
+          stringified (if-not custom-display?
                         (pr-str value)
-                        disp)
+                        value)
           type (when (not= disp ::no-custom-display)
                  (class-of value))]
       (h/html
        [::h/if href
         (link href stringified)
-        [:div.inline-block
-         stringified
-         [::h/when type
-          [:span.text-xs " (" type ")"]]]]))))
+        [::h/if custom-display?
+         [:div.inline-block
+          stringified
+          [::h/when type
+           [:span.text-xs " (" type ")"]]]
+         [:div.inline-block
+          (ui.edn/edn value)]]]))))
 
 (defmulti editor-widget-for
   (fn [value-type _initial-value _set-value!]
