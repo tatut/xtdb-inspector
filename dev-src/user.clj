@@ -86,15 +86,21 @@
                :xtdb-inspector.saved-query/name "users with name"
                :xtdb-inspector.saved-query/query
                (str "{:find [?u (pull ?u [:first-name :last-name])]\n"
-                    " :where [[?u :first-name]]}")}]])
-
-  )
+                    " :where [[?u :first-name]]}")}]]))
 
 (defn db [] (xt/db @xtdb))
+
+(defn shutdown []
+  (when-let [server @server]
+    (server))
+  (when-let [node @xtdb]
+    (.close node))
+  (shutdown-agents))
 
 (defn -main [& _args]
   (println "Starting main for testing")
   (start)
   (some-docs)
   ;; We are in the background, so sleep until tests are done
-  (Thread/sleep (* 1000 60 15)))
+  (Thread/sleep (* 1000 60 15))
+  (shutdown))
