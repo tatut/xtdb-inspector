@@ -71,7 +71,7 @@
                          old-val (when (not= ::no-value (::from val))
                                    (pr-str (::from val)))
                          new-val (when (not= ::no-value (::to val))
-                                   (pr-str (::to val)))]]
+                                   (::to val))]]
           (attr-val-row
            key-name
            (fn []
@@ -80,7 +80,7 @@
                [::h/when old-val
                 [:div.line-through old-val]]
                [::h/when new-val
-                [:div new-val]]])))]]]]])))
+                [:div (ui/format-value (constantly false) new-val)]]])))]]]]])))
 
 (defn links-to [xtdb id]
   (let [attrs
