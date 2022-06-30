@@ -104,3 +104,14 @@
   ;; We are in the background, so sleep until tests are done
   (Thread/sleep (* 1000 60 15))
   (shutdown))
+
+
+;; generate some test data for barcharts
+(comment
+  (def devs (map first (xt/q (db) '[:find e :where [(text-search :job-title "developer") [[e]]]])))
+  (def langs [:clojure :haskell :rust :typescript :clojure :clojure :smalltalk]) ; stack the odds :D
+  (xt/submit-tx
+   @xtdb
+   (for [d devs
+         :let [l (rand-nth langs)]]
+     [::xt/put (assoc (xt/entity (db) d) :favorite-language l)])))
