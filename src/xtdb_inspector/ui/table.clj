@@ -117,6 +117,7 @@
               If not set, the items are ordered by using clojure builtin
               `sort-by` function.
 
+  :class      class to apply to the main table, defaults to \"table-auto\"
   :row-class  class to apply to rows
               defaults to slightly striped coloring of alternate rows
 
@@ -124,10 +125,11 @@
               Add optional callback to when the row is clicked.
               The function is called with the full row data.
   "
-  [{:keys [key filter-fn order set-order! render-after empty-message]
+  [{:keys [key filter-fn order set-order! render-after empty-message class]
               :or {filter-fn default-filter-fn
                    key identity
-                   order [nil :asc]} :as table-def} data-source]
+                   order [nil :asc]
+                   class "table-auto"} :as table-def} data-source]
   (let [[filter-source set-filter!] (source/use-state "")
         [order-source set-table-order!] (source/use-state order)
         rows-source (source/computed
@@ -136,7 +138,7 @@
     (h/html
      [:div.mx-2.font-mono
       (filter-input set-filter!)
-      [:table.table-auto
+      [:table {:class class}
        [::h/live order-source (partial header table-def
                                        #(do
                                           (when set-order!
