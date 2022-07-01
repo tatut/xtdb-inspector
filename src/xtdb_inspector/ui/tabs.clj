@@ -14,6 +14,7 @@
 
 (defn tabs [& tabs]
   (let [[selected-idx set-selected-idx!] (source/use-state 0)
+        tabs (remove nil? tabs)
         tab-count (count tabs)]
     (h/html
      [:div.tabs

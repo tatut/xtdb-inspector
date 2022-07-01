@@ -11,7 +11,10 @@
             [ripley.impl.dynamic :as dyn]
             xtdb.query
             [xtdb-inspector.id :as id]
-            [clojure.core.async :as async]))
+            [clojure.core.async :as async]
+            [clojure.string :as str]
+            [xtdb-inspector.ui.tabs :as ui.tabs]
+            [xtdb-inspector.ui.table :as ui.table]))
 
 (def last-query (atom "{:find []\n :where []\n :limit 100}"))
 
@@ -114,15 +117,20 @@
                   (every? #(not= '* %) (nth header 2)))
            ;; pull pattern that has no star, generate column for each
            (for [k (nth header 2)]
-             {:name (str (when column-name
-                           (str column-name ": ")) (name k))
-              :accessor [column-accessor k]})
+             {:label (str (when column-name
+                            (str column-name ": ")) (name k))
+              :accessor #(get-in % [column-accessor k])})
 
            ;; any other result
-           [{:name (or column-name (pr-str header))
-             :accessor [column-accessor]
+           [{:label (or column-name (pr-str header))
+             :accessor #(get-in % [column-accessor])
              :id? (when (id? header) true)}])))
      (:find query) column-accessors)))
+
+(defn- bar-chartable? [find-defs]
+  (and (= 2 (count find-defs))
+       (some #(str/starts-with? (:label %) "(count ") find-defs)))
+
 
 (defn- duration [ms]
   (cond
@@ -150,6 +158,7 @@
     (let [[result-source count-source] results
           db (xt/db xtdb-node)
           headers (unpack-find-defs db query)]
+      (println "chartable? " headers " => " (bar-chartable? headers))
       (h/html
        [:div
         [:div.text-sm
@@ -158,31 +167,47 @@
                     (h/dyn! %)
                     " results in "
                     (h/dyn! (duration (/ (- (System/nanoTime) timing) 1e6)))])]]
-        [:table.w-full
-         [:thead.bg-gray-200
-          [:tr
-           [::h/for [header-name (map :name headers)]
-            [:td header-name]]]]
-         [::h/live
-          {:source result-source
-           :patch :append
-           :container [:tbody]
-           :component
-           (fn [results]
-             (with-open [db (xt/open-db xtdb-node basis)]
-               (h/html
-                [::h/for [row results]
-                 [:tr
-                  [::h/for [{:keys [accessor id?]} headers
-                            :let [item (get-in row accessor)]]
-                   [:td
-                    (ui/format-value #(if (some? id?)
-                                        ;; id known based on query plan
-                                        id?
+        (ui.tabs/tabs
+         {:label "Table"
+          :render
+          (fn []
+            (h/html
+             (ui.table/table
+              {:key identity
+               ;; Set render method that uses format value
+               :columns headers}
+              result-source)
+             #_[:table.w-full
+              [:thead.bg-gray-200
+               [:tr
+                [::h/for [header-name (map :name headers)]
+                 [:td header-name]]]]
+              [::h/live
+               {:source result-source
+                :patch :append
+                :container [:tbody]
+                :component
+                (fn [results]
+                  (with-open [db (xt/open-db xtdb-node basis)]
+                    (h/html
+                     [::h/for [row results]
+                      [:tr
+                       [::h/for [{:keys [accessor id?]} headers
+                                 :let [item (get-in row accessor)]]
+                        [:td
+                         (ui/format-value #(if (some? id?)
+                                             ;; id known based on query plan
+                                             id?
 
-                                        ;; unknown, check if it is an id
-                                        (id/valid-id? db %))
-                                     item)]]]])))}]]]))))
+                                             ;; unknown, check if it is an id
+                                             (id/valid-id? db %))
+                                          item)]]]])))}]]))}
+         (when (bar-chartable? headers)
+           {:label "Bar chart"
+            :render
+            (fn []
+              (h/html
+               [:div "bar chart tänne"]))}))]))))
 
 (defn saved-queries [db]
   (xt/q db '{:find [?e ?n]
