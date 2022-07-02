@@ -156,29 +156,34 @@
                        :placeholder "New attr kw"))
            (fn []
              (h/html
-              [:div.flex.justify-left
-               [:select {:on-change (js/js #(set-value-type!
-                                             (or (first (filter (fn [t]
-                                                                  (= % (ui/short-class-name t)))
-                                                                editor-types))
-                                                 :edn))
-                                           "event.target.value")}
-                [:option {:value ""} " -- select -- "]
-                [:option {:value "EDN"} "EDN"]
-                [::h/for [cls editor-types
-                          :let [class-name (ui/short-class-name cls)]]
-                 [:option {:value class-name} class-name]]]
-               [::h/live value-type
-                (fn [type]
-                  (if (= type :not-set)
-                    (h/html [:span ""])
-                    (ui/editor-widget-for
-                     type ::ui/empty
-                     (fn [to]
-                       (rerender!)
-                       (update-doc! xtdb-node id
-                                    (ui/parse-edn (p/current-value attr-name))
-                                    to)))))]])))))])))
+              [:div.form-control
+               [:div.input-group.input-group-sm
+
+
+                [:select.select.select-sm.select-bordered
+                 {:on-change (js/js #(set-value-type!
+                                      (or (first (filter (fn [t]
+                                                           (= % (ui/short-class-name t)))
+                                                         editor-types))
+                                          :edn))
+                                    "event.target.value")}
+                 [:option {:value ""} "Type"]
+                 [:option {:value "EDN"} "EDN"]
+                 [::h/for [cls editor-types
+                           :let [class-name (ui/short-class-name cls)]]
+                  [:option {:value class-name} class-name]]]
+
+                [::h/live value-type
+                 (fn [type]
+                   (if (= type :not-set)
+                     (h/html [:span ""])
+                     (ui/editor-widget-for
+                      type ::ui/empty
+                      (fn [to]
+                        (rerender!)
+                        (update-doc! xtdb-node id
+                                     (ui/parse-edn (p/current-value attr-name))
+                                     to)))))]]])))))])))
 
 (declare render-doc-data doc-source)
 
@@ -234,7 +239,7 @@
 (defn- render-doc-data [xtdb-node id entity-source]
   (ui.table/table
    {:key key
-    :class "table table-compact w-full"
+    :class "table table-compact table-zebra w-full"
     :columns [{:label "Attribute" :accessor key
                :render ui.edn/edn}
               {:label "Value" :accessor val
@@ -285,10 +290,12 @@
      [:div.flex.flex-col.m-4
       [:div "Insert XTDB document id (" [:span.font-mono ":xt/id"] ") as EDN:"]
       [:div
-       [:input#doc {:name "doc"}]
-       [:button.border-2.rounded-2.p-1
-        {:on-click (js/js set-doc! (js/input-value "doc"))}
-        "Go"]]
+       [:div.form-control
+        [:div.input-group
+         [:input#doc.input {:name "doc"}]
+         [:button.btn.btn-primary
+          {:on-click (js/js set-doc! (js/input-value "doc"))}
+          "Go"]]]]
       [:span.font-light
        "Examples: 123  :hello  \"some-doc\" "]
       (js/eval-js-from-source

@@ -79,7 +79,7 @@
   (let [id (str (gensym "edit"))]
     (h/html
      [:div
-      [:input.w-full
+      [:input.input.input-sm.input-bordered.w-full
        {:autofocus true
         :type type
         :value initial-value
