@@ -193,17 +193,19 @@
   [xtdb-node _db id]
   (let [[show set-show!] (source/use-state false)]
     (h/html
-     [:div.inline-doc-view
-      [::h/live show
-       #(h/html [:button.rounded-none.bg-blue-500.mx-2.px-1
-                 {:on-click (partial set-show! (not %))}
-                 [::h/if % "-" "+"]])]
-      [::h/live show
-       #(h/html
-         [::h/if %
-          [:div.ml-2
-           (render-doc-data xtdb-node id (doc-source xtdb-node id))]
-          [:script]])]])))
+     [:div {:class [::h/live (source/computed #(str "collapse collapse-"
+                                                    (if % "open" "close"))
+                                              show)]}
+      [:div ;; .collapse-title has way too much padding
+       (ui/format-value (constantly true) id)
+
+       [::h/live show
+        #(h/html [:button.btn.btn-square.btn-xs.ml-1.btn-info
+                  {:on-click (partial set-show! (not %))}
+                  [::h/if % "-" "+"]])]]
+      [:div.collapse-content
+       [::h/when show
+        (render-doc-data xtdb-node id (doc-source xtdb-node id))]]])))
 
 (defn- render-editable-value [xtdb-node db entity-id [k v]]
   (let [[edit? set-edit!] (source/use-state false)]
@@ -215,9 +217,9 @@
             (h/html
              [:div.hover-trigger
               [:div.flex
-               (ui/format-value (constantly id) v)
-               (when id
-                 (inline-doc-view xtdb-node db v))
+               [::h/if id
+                (inline-doc-view xtdb-node db v)
+                (ui/format-value (constantly id) v)]
                [:div.flex-grow.flex.justify-end.items-start
                 [:button.hover-target.fixed.bg-blue-500.rounded.px-1
                  {:on-click #(set-edit! true)}
