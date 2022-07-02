@@ -51,33 +51,28 @@
                                {::index i ::item item}))
                             %)
                      bars-source)]
-    (try
-      (h/html
-       [:svg {:width width :height [::h/live height]}
-        (collection/live-collection
-         {:source bars-source
-          :key (comp label-accessor ::item)
-          :container-element :g
-          :item-source-fn #(source/computed
-                            (fn [max item]
-                              (assoc item ::max max))
-                            max-source %)
-          :render (fn [{::keys [index max item]}]
-                    (let [value (value-accessor item)
-                          label (label-accessor item)
-                          y (* bar-height (+ index 0.1))
-                          w (* 0.66 (/ value max) width)
-                          value-and-label (str value " " label)]
-                      (h/html
-                       [:g
-                        [:rect {:y y
-                                :width w
-                                :height (* 0.8 bar-height)
-                                :fill "red"}]
-                        [:text {:x (+ w (* 0.05 width))
-                                :y (+ y (/ bar-height 2))}
-                         value-and-label]])))})
-        ])
-      (catch Throwable t
-        (println "EXC: " t))))
-  )
+    (h/html
+     [:svg {:width width :height [::h/live height]}
+      (collection/live-collection
+       {:source bars-source
+        :key (comp label-accessor ::item)
+        :container-element :g
+        :item-source-fn #(source/computed
+                          (fn [max item]
+                            (assoc item ::max max))
+                          max-source %)
+        :render (fn [{::keys [index max item]}]
+                  (let [value (value-accessor item)
+                        label (label-accessor item)
+                        y (* bar-height (+ index 0.1))
+                        w (* 0.66 (/ value max) width)
+                        value-and-label (str value " " label)]
+                    (h/html
+                     [:g
+                      [:rect {:y y
+                              :width w
+                              :height (* 0.8 bar-height)
+                              :fill "red"}]
+                      [:text {:x (+ w (* 0.05 width))
+                              :y (+ y (/ bar-height 2))}
+                       value-and-label]])))})])))
