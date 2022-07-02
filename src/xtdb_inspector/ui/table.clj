@@ -117,7 +117,7 @@
               If not set, the items are ordered by using clojure builtin
               `sort-by` function.
 
-  :class      class to apply to the main table, defaults to \"table-auto\"
+  :class      class to apply to the main table, defaults to \"table table-compact\"
   :row-class  class to apply to rows
               defaults to slightly striped coloring of alternate rows
 
@@ -129,7 +129,7 @@
               :or {filter-fn default-filter-fn
                    key identity
                    order [nil :asc]
-                   class "table-auto"} :as table-def} data-source]
+                   class "table table-compact"} :as table-def} data-source]
   (let [[filter-source set-filter!] (source/use-state "")
         [order-source set-table-order!] (source/use-state order)
         rows-source (source/computed

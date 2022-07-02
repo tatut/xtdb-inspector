@@ -215,17 +215,19 @@
              :where [[?e :xtdb-inspector.saved-query/name ?n]]}))
 
 (defn save-query! [xtdb-node name query]
-  (let [existing-query-id (ffirst
-                           (xt/q (xt/db xtdb-node)
-                                 '{:find [?q]
-                                   :where [[?q :xtdb-inspector.saved-query/name ?n]]
-                                   :in [?n]}
-                                 name))]
-    (xt/submit-tx
-     xtdb-node
-     [[::xt/put {:xt/id (or existing-query-id (java.util.UUID/randomUUID))
-                 :xtdb-inspector.saved-query/name name
-                 :xtdb-inspector.saved-query/query query}]])))
+  (when (and (not (str/blank? name))
+             (not (str/blank? query)))
+    (let [existing-query-id (ffirst
+                             (xt/q (xt/db xtdb-node)
+                                   '{:find [?q]
+                                     :where [[?q :xtdb-inspector.saved-query/name ?n]]
+                                     :in [?n]}
+                                   name))]
+      (xt/submit-tx
+       xtdb-node
+       [[::xt/put {:xt/id (or existing-query-id (java.util.UUID/randomUUID))
+                   :xtdb-inspector.saved-query/name name
+                   :xtdb-inspector.saved-query/query query}]]))))
 
 (defn saved-queries-ui [xtdb-node]
   (let [[query load-query!] (source/use-state nil)
@@ -242,25 +244,25 @@
       (js/eval-js-from-source query-source)
 
       [:div.flex.flex-row
-       [:div.border-2.p-2
-        "Save query as: "
-        [:input#save-query-as {:type :text :placeholder "save query as"}]
-        [:button.p-1.bg-blue-200
-         {:on-click (js/js (partial save-query! xtdb-node)
-                           (js/input-value "save-query-as")
-                           "editor.getDoc().getValue()")}
-         "Save"]]
-       [:div.border-2.p-2.ml-1
-        "Load saved query: "
-        [::h/live (rx/q {:node xtdb-node :should-update? (constantly true)} saved-queries)
-         (fn [queries]
-           (h/html
-            [:select {:name "saved-query"
-                      :on-change (js/js load-query! js/change-value)}
-             [:option {:disabled true :selected true} "--  saved query --"]
-             [::h/for [{:keys [id name]} queries
-                       :let [id (str id)]]
-              [:option {:value id} name]]]))]]]])))
+       [:div.form-control
+        [:div.input-group.input-group-md
+         [:input#save-query-as.input.input-bordered.input-md {:placeholder "Save query as"}]
+         [:button.btn.btn-square.btn-md
+          {:on-click (js/js (partial save-query! xtdb-node)
+                            (js/input-value "save-query-as")
+                            "editor.getDoc().getValue()")}
+          "Save"]]]
+       [:div.divider.divider-horizontal]
+       [::h/live (rx/q {:node xtdb-node :should-update? (constantly true)} saved-queries)
+        (fn [queries]
+          (h/html
+           [:select.select.select-bordered.w-full.max-w-xs
+            {:name "saved-query"
+             :on-change (js/js load-query! js/change-value)}
+            [:option {:disabled true :selected true} "Load saved query"]
+            [::h/for [{:keys [id name]} queries
+                      :let [id (str id)]]
+             [:option {:value id} name]]]))]]])))
 
 (defn- saved-query-by-name [db name]
   (ffirst
@@ -306,12 +308,14 @@
             [:div.bg-red-300.border-2 error-message]
             [:span]]]))]
       [:div.flex
-       [:button.p-1.bg-blue-200
+       [:button.btn.btn-primary
         {:on-click (js/js query!
                           "editor.getDoc().getValue()"
                           ""
                           )}
         "Run query"]]
+
+      [:div.divider.divider-vertical]
 
       [::h/live (source/c= (select-keys %state
                                         [:basis :running? :results :query :timing]))

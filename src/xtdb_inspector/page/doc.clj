@@ -234,7 +234,7 @@
 (defn- render-doc-data [xtdb-node id entity-source]
   (ui.table/table
    {:key key
-    :class "w-full"
+    :class "table table-compact w-full"
     :columns [{:label "Attribute" :accessor key
                :render ui.edn/edn}
               {:label "Value" :accessor val

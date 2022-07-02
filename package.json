@@ -1,10 +1,11 @@
 {
   "dependencies": {
+    "daisyui": "^2.17.0",
     "postcss-cli": "^8.3.1",
     "tailwindcss": "^3.1.4"
   },
   "scripts": {
-      "tailwind": "tailwindcss -i resources/xtdb-inspector.css -o resources/public/xtdb-inspector.css --watch",
-      "tailwindprod": "tailwindcss -i resources/xtdb-inspector.css -o resources/public/xtdb-inspector.css -m"
+    "tailwind": "tailwindcss -i resources/xtdb-inspector.css -o resources/public/xtdb-inspector.css --watch",
+    "tailwindprod": "tailwindcss -i resources/xtdb-inspector.css -o resources/public/xtdb-inspector.css -m"
   }
 }

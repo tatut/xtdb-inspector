@@ -4,12 +4,14 @@
             [ripley.live.source :as source]))
 
 (defn- tab-button [label select! selected?]
-  (let [cls (str "cursor-pointer py-2 px-4 text-gray-500 border-b-8"
-                 (when selected?
-                   " text-green-500 border-green-500"))]
+  (let [cls (source/computed
+             #(str "tab tab-bordered"
+                   (when %
+                     " tab-active"))
+             selected?)]
     (h/html
-     [:li {:on-click select!
-           :class cls}
+     [:a {:on-click select!
+          :class [::h/live cls]}
       label])))
 
 (defn tabs [& tabs]
@@ -17,13 +19,13 @@
         tabs (remove nil? tabs)
         tab-count (count tabs)]
     (h/html
-     [:div.tabs
-      [:ul.flex.items-center.my-4
-       [::h/for [i (range tab-count)
-                 :let [{:keys [label render]} (nth tabs i)]]
-        [::h/live
-         (source/computed #(= i %) selected-idx)
-         (partial tab-button label #(set-selected-idx! i))]]]
+     [:div
+      [:div.tabs
+       (doseq [i (range tab-count)
+               :let [{:keys [label]} (nth tabs i)]]
+         (tab-button label
+                     #(set-selected-idx! i)
+                     (source/computed #(= i %) selected-idx)))]
       [::h/live selected-idx
        #(h/html
          [:div.tab-content

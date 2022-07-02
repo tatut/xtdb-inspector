@@ -87,7 +87,7 @@
         [show-metrics? set-show-metrics!] (source/use-state false)]
     (h/out! "<!DOCTYPE html>\n")
     (h/html
-     [:html
+     [:html {:data-theme "light"}
       [:head
        [:meta {:charset "UTF-8"}]
        [:link {:rel "stylesheet" :href "/xtdb-inspector.css"}]
