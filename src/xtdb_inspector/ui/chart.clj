@@ -52,7 +52,8 @@
                             %)
                      bars-source)]
     (h/html
-     [:svg {:width width :height [::h/live height]}
+     [:svg {:width width :height [::h/live height]
+            :fill "currentColor"}
       (collection/live-collection
        {:source bars-source
         :key (comp label-accessor ::item)
@@ -69,10 +70,9 @@
                         value-and-label (str value " " label)]
                     (h/html
                      [:g
-                      [:rect {:y y
-                              :width w
-                              :height (* 0.8 bar-height)
-                              :fill "red"}]
-                      [:text {:x (+ w (* 0.05 width))
-                              :y (+ y (/ bar-height 2))}
+                      [:rect.text-primary {:y y
+                                           :width w
+                                           :height (* 0.8 bar-height)}]
+                      [:text.text-info {:x (+ w (* 0.05 width))
+                                        :y (+ y (/ bar-height 2))}
                        value-and-label]])))})])))
