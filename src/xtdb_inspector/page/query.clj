@@ -6,15 +6,13 @@
             [xtdb.api :as xt]
             [xtdb-inspector.ui :as ui]
             [ripley.integration.xtdb :as rx]
-            [cheshire.core :as cheshire]
             [ripley.live.protocols :as p]
-            [ripley.impl.dynamic :as dyn]
             xtdb.query
             [xtdb-inspector.id :as id]
-            [clojure.core.async :as async]
             [clojure.string :as str]
             [xtdb-inspector.ui.tabs :as ui.tabs]
-            [xtdb-inspector.ui.table :as ui.table]))
+            [xtdb-inspector.ui.table :as ui.table]
+            [xtdb-inspector.ui.chart :as ui.chart]))
 
 (def last-query (atom "{:find []\n :where []\n :limit 100}"))
 
@@ -35,18 +33,17 @@
       {:error (.getMessage t)})))
 
 (defn query-result-and-count-sources [db q on-error!]
-  (let [ch (async/chan)
+  (let [[results set-results!] (source/use-state [])
         result-count (atom 0)]
-    (async/thread
+    (future
       (try
         (with-open [res (xt/open-q db q)]
-          (doseq [p (->> res iterator-seq (partition-all 20))]
+          (doseq [p (->> res iterator-seq (partition-all 100))]
             (swap! result-count + (count p))
-            (async/>!! ch p)))
+            (set-results! (into (p/current-value results) p))))
         (catch Throwable t
-          (on-error! (str "Error in query: " (.getMessage t)))))
-      (async/close! ch))
-    [ch result-count]))
+          (on-error! (str "Error in query: " (.getMessage t))))))
+    [results result-count]))
 
 (defn- query! [xtdb-node set-state! query-str]
   (reset! last-query query-str)
@@ -158,7 +155,6 @@
     (let [[result-source count-source] results
           db (xt/db xtdb-node)
           headers (unpack-find-defs db query)]
-      (println "chartable? " headers " => " (bar-chartable? headers))
       (h/html
        [:div
         [:div.text-sm
@@ -176,38 +172,25 @@
               {:key identity
                ;; Set render method that uses format value
                :columns headers}
-              result-source)
-             #_[:table.w-full
-              [:thead.bg-gray-200
-               [:tr
-                [::h/for [header-name (map :name headers)]
-                 [:td header-name]]]]
-              [::h/live
-               {:source result-source
-                :patch :append
-                :container [:tbody]
-                :component
-                (fn [results]
-                  (with-open [db (xt/open-db xtdb-node basis)]
-                    (h/html
-                     [::h/for [row results]
-                      [:tr
-                       [::h/for [{:keys [accessor id?]} headers
-                                 :let [item (get-in row accessor)]]
-                        [:td
-                         (ui/format-value #(if (some? id?)
-                                             ;; id known based on query plan
-                                             id?
-
-                                             ;; unknown, check if it is an id
-                                             (id/valid-id? db %))
-                                          item)]]]])))}]]))}
+              result-source)))}
          (when (bar-chartable? headers)
            {:label "Bar chart"
             :render
             (fn []
-              (h/html
-               [:div "bar chart tänne"]))}))]))))
+              (let [{[label-header] false
+                     [value-header] true}
+                    (group-by #(str/starts-with? (:label %) "(count ")
+                                          headers)
+                    value-accessor (:accessor value-header)
+                    label-accessor (:accessor label-header)]
+                (h/html
+                 [:div
+                  (ui.chart/bar-chart
+                   {:width 500
+                    :bar-height 30
+                    :value-accessor value-accessor
+                    :label-accessor label-accessor}
+                   result-source)])))}))]))))
 
 (defn saved-queries [db]
   (xt/q db '{:find [?e ?n]
