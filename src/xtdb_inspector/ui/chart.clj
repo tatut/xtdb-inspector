@@ -40,7 +40,7 @@
          label-accessor :label}}
    bars-source]
   (let [max-source (source/computed
-                    #(reduce max (map value-accessor %))
+                    #(reduce max 1 (map value-accessor %))
                     bars-source)
         top 30
         height (source/computed #(+ top (* bar-height (count %))) bars-source)
@@ -75,7 +75,6 @@
                            :stroke "black"}]])))]
     (h/html
      [:svg {:width width
-            ;:height [::h/live height]
             :viewBox [::h/live viewbox]
             :fill "currentColor"
             :preserveAspectRatio "xMinYMin"}
@@ -105,6 +104,4 @@
        ;; add 25%, 50% and 75% ticks
        [::h/live (tick-source 0.25) tick]
        [::h/live (tick-source 0.50) tick]
-       [::h/live (tick-source 0.75) tick]]
-
-      ])))
+       [::h/live (tick-source 0.75) tick]]])))
