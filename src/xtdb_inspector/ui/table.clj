@@ -38,7 +38,7 @@
       items)))
 
 (defn- render-row [{:keys [columns row-class on-row-click]} row]
-  (let [cls (str (or row-class "odd:bg-white even:bg-gray-100")
+  (let [cls (str row-class
                  (when on-row-click
                    " cursor-pointer"))]
     (h/html
@@ -117,19 +117,22 @@
               If not set, the items are ordered by using clojure builtin
               `sort-by` function.
 
-  :class      class to apply to the main table, defaults to \"table-auto\"
-  :row-class  class to apply to rows
+  :class      Class to apply to the main table.
+              Defaults to \"table table-compact table-zebra\".
+
+  :row-class  Class to apply to rows.
               defaults to slightly striped coloring of alternate rows
 
   :on-row-click
               Add optional callback to when the row is clicked.
               The function is called with the full row data.
+
   "
   [{:keys [key filter-fn order set-order! render-after empty-message class]
-              :or {filter-fn default-filter-fn
-                   key identity
-                   order [nil :asc]
-                   class "table-auto"} :as table-def} data-source]
+    :or {filter-fn default-filter-fn
+         key identity
+         order [nil :asc]
+         class "table table-compact table-zebra"} :as table-def} data-source]
   (let [[filter-source set-filter!] (source/use-state "")
         [order-source set-table-order!] (source/use-state order)
         rows-source (source/computed

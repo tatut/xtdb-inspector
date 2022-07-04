@@ -156,29 +156,34 @@
                        :placeholder "New attr kw"))
            (fn []
              (h/html
-              [:div.flex.justify-left
-               [:select {:on-change (js/js #(set-value-type!
-                                             (or (first (filter (fn [t]
-                                                                  (= % (ui/short-class-name t)))
-                                                                editor-types))
-                                                 :edn))
-                                           "event.target.value")}
-                [:option {:value ""} " -- select -- "]
-                [:option {:value "EDN"} "EDN"]
-                [::h/for [cls editor-types
-                          :let [class-name (ui/short-class-name cls)]]
-                 [:option {:value class-name} class-name]]]
-               [::h/live value-type
-                (fn [type]
-                  (if (= type :not-set)
-                    (h/html [:span ""])
-                    (ui/editor-widget-for
-                     type ::ui/empty
-                     (fn [to]
-                       (rerender!)
-                       (update-doc! xtdb-node id
-                                    (ui/parse-edn (p/current-value attr-name))
-                                    to)))))]])))))])))
+              [:div.form-control
+               [:div.input-group.input-group-sm
+
+
+                [:select.select.select-sm.select-bordered
+                 {:on-change (js/js #(set-value-type!
+                                      (or (first (filter (fn [t]
+                                                           (= % (ui/short-class-name t)))
+                                                         editor-types))
+                                          :edn))
+                                    "event.target.value")}
+                 [:option {:value ""} "Type"]
+                 [:option {:value "EDN"} "EDN"]
+                 [::h/for [cls editor-types
+                           :let [class-name (ui/short-class-name cls)]]
+                  [:option {:value class-name} class-name]]]
+
+                [::h/live value-type
+                 (fn [type]
+                   (if (= type :not-set)
+                     (h/html [:span ""])
+                     (ui/editor-widget-for
+                      type ::ui/empty
+                      (fn [to]
+                        (rerender!)
+                        (update-doc! xtdb-node id
+                                     (ui/parse-edn (p/current-value attr-name))
+                                     to)))))]]])))))])))
 
 (declare render-doc-data doc-source)
 
@@ -188,17 +193,19 @@
   [xtdb-node _db id]
   (let [[show set-show!] (source/use-state false)]
     (h/html
-     [:div.inline-doc-view
-      [::h/live show
-       #(h/html [:button.rounded-none.bg-blue-500.mx-2.px-1
-                 {:on-click (partial set-show! (not %))}
-                 [::h/if % "-" "+"]])]
-      [::h/live show
-       #(h/html
-         [::h/if %
-          [:div.ml-2
-           (render-doc-data xtdb-node id (doc-source xtdb-node id))]
-          [:script]])]])))
+     [:div {:class [::h/live (source/computed #(str "collapse collapse-"
+                                                    (if % "open" "close"))
+                                              show)]}
+      [:div ;; .collapse-title has way too much padding
+       (ui/format-value (constantly true) id)
+
+       [::h/live show
+        #(h/html [:button.btn.btn-square.btn-xs.ml-1.btn-info
+                  {:on-click (partial set-show! (not %))}
+                  [::h/if % "-" "+"]])]]
+      [:div.collapse-content
+       [::h/when show
+        (render-doc-data xtdb-node id (doc-source xtdb-node id))]]])))
 
 (defn- render-editable-value [xtdb-node db entity-id [k v]]
   (let [[edit? set-edit!] (source/use-state false)]
@@ -210,9 +217,9 @@
             (h/html
              [:div.hover-trigger
               [:div.flex
-               (ui/format-value (constantly id) v)
-               (when id
-                 (inline-doc-view xtdb-node db v))
+               [::h/if id
+                (inline-doc-view xtdb-node db v)
+                (ui/format-value (constantly id) v)]
                [:div.flex-grow.flex.justify-end.items-start
                 [:button.hover-target.fixed.bg-blue-500.rounded.px-1
                  {:on-click #(set-edit! true)}
@@ -234,7 +241,7 @@
 (defn- render-doc-data [xtdb-node id entity-source]
   (ui.table/table
    {:key key
-    :class "w-full"
+    :class "table table-compact table-zebra w-full"
     :columns [{:label "Attribute" :accessor key
                :render ui.edn/edn}
               {:label "Value" :accessor val
@@ -285,10 +292,12 @@
      [:div.flex.flex-col.m-4
       [:div "Insert XTDB document id (" [:span.font-mono ":xt/id"] ") as EDN:"]
       [:div
-       [:input#doc {:name "doc"}]
-       [:button.border-2.rounded-2.p-1
-        {:on-click (js/js set-doc! (js/input-value "doc"))}
-        "Go"]]
+       [:div.form-control
+        [:div.input-group
+         [:input#doc.input {:name "doc"}]
+         [:button.btn.btn-primary
+          {:on-click (js/js set-doc! (js/input-value "doc"))}
+          "Go"]]]]
       [:span.font-light
        "Examples: 123  :hello  \"some-doc\" "]
       (js/eval-js-from-source

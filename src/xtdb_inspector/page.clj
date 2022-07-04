@@ -10,45 +10,46 @@
             [xtdb-inspector.ui :as ui]
             [ripley.live.protocols :as p]))
 
+(defn search [search!]
+  (h/html
+   [:div.form-control
+    [:dic.input-group.input-group-sm
+     [:input#lucene-search.input.input-bordered.input-sm
+      {:placeholder "Search...", :name "search", :type "search"
+       :on-input (js/js-debounced 500 search! (js/input-value "lucene-search"))}]
+     [:button.btn.btn-square.btn-sm
+      {:type "submit"}
+      [:svg
+       {:width "20px" :height "20px"
+        :fill "currentColor"
+        :y "0px"
+        :x "0px"
+        :version "1.1",
+        :viewbox "0 0 56.966 56.966",}
+       [:path
+        {:d "M55.146,51.887L41.588,37.786c3.486-4.144,5.396-9.358,5.396-14.786c0-12.682-10.318-23-23-23s-23,10.318-23,23  s10.318,23,23,23c4.761,0,9.298-1.436,13.177-4.162l13.661,14.208c0.571,0.593,1.339,0.92,2.162,0.92  c0.779,0,1.518-0.297,2.079-0.837C56.255,54.982,56.293,53.08,55.146,51.887z M23.984,6c9.374,0,17,7.626,17,17s-7.626,17-17,17  s-17-7.626-17-17S14.61,6,23.984,6z"}]]]]]))
+
+(def links
+  [["/query" "Query"]
+   ["/doc" "Documents"]
+   ["/attr" "Attributes"]
+   ["/tx" "Transactions"]])
+
 (defn app-bar [ctx search!]
   ;; HTML adapted from https://tailwindcomponents.com/component/responsive-navbar-2
   (h/html
-   [:nav.flex.items-center.justify-between.flex-wrap.bg-white.py-4.lg:px-12.shadow.border-solid.border-t-2.border-blue-700
-    [:div.flex.justify-between.lg:w-auto.w-full.lg:border-b-0.pl-6.pr-2.border-solid.border-b-2.border-gray-300.pb-5.lg:pb-0
-     [:div.flex.items-center.flex-shrink-0.text-gray-800.mr-16
-      [:span.font-semibold.text-xl.tracking-tight "XTDB Inspector"]]]
-    [:div.menu.w-full.lg:block.flex-grow.lg:flex.lg:items-center.lg:w-auto.lg:px-3.px-8
-     [:div.text-md.font-bold.text-blue-700.lg:flex-grow
-      [:a.block.mt-4.lg:inline-block.lg:mt-0.hover:text-white.px-4.py-2.rounded.hover:bg-blue-700.mr-2
-       {:href "/query"}
-       "Query"]
-      [:a.block.mt-4.lg:inline-block.lg:mt-0.hover:text-white.px-4.py-2.rounded.hover:bg-blue-700.mr-2
-       {:href "/doc"}
-       "Documents"]
-      [:a.block.mt-4.lg:inline-block.lg:mt-0.hover:text-white.px-4.py-2.rounded.hover:bg-blue-700.mr-2
-       {:href "/attr"}
-       "Attributes"]
-      [:a.block.mt-4.lg:inline-block.lg:mt-0.hover:text-white.px-4.py-2.rounded.hover:bg-blue-700.mr-2
-       {:href "/tx"}
-       "Transactions"]]
+   [:nav.navbar.bg-base-100
+    [:div.flex-1
+     [:span.font-semibold "XTDB Inspector"]]
 
-     [:div.relative.mx-auto.text-gray-600.lg:block.hidden
-      [:input#lucene-search.border-2.border-gray-300.bg-white.h-10.pl-2.pr-8.rounded-lg.text-sm.focus:outline-none
-       {:placeholder "Search lucene index", :name "search", :type "search"
-        :on-input (js/js-debounced 500 search! (js/input-value "lucene-search"))}]
-      [:button.absolute.right-0.top-0.mt-3.mr-2
-       {:type "submit"}
-       [:svg#Capa_1.text-gray-600.h-4.w-4.fill-current
-        {:width "512px",
-         :y "0px",
-         :x "0px",
-         :xml:space "preserve",
-         :style "enable-background:new 0 0 56.966 56.966;",
-         :version "1.1",
-         :viewbox "0 0 56.966 56.966",
-         :height "512px"}
-        [:path
-         {:d "M55.146,51.887L41.588,37.786c3.486-4.144,5.396-9.358,5.396-14.786c0-12.682-10.318-23-23-23s-23,10.318-23,23  s10.318,23,23,23c4.761,0,9.298-1.436,13.177-4.162l13.661,14.208c0.571,0.593,1.339,0.92,2.162,0.92  c0.779,0,1.518-0.297,2.079-0.837C56.255,54.982,56.293,53.08,55.146,51.887z M23.984,6c9.374,0,17,7.626,17,17s-7.626,17-17,17  s-17-7.626-17-17S14.61,6,23.984,6z"}]]]]]]))
+    [:div.navbar-start
+     [:ul.menu.menu-compact.lg:menu-horizontal.md:menu-horizontal
+      [::h/for [[href label] links]
+       [:li
+        [:a {:href href} label]]]]]
+
+    [:div.navbar-end; flex-none.gap-2
+     (search search!)]]))
 
 
 (defn lucene-search! [xtdb-node set-results! text]
@@ -87,7 +88,7 @@
         [show-metrics? set-show-metrics!] (source/use-state false)]
     (h/out! "<!DOCTYPE html>\n")
     (h/html
-     [:html
+     [:html {:data-theme "light"}
       [:head
        [:meta {:charset "UTF-8"}]
        [:link {:rel "stylesheet" :href "/xtdb-inspector.css"}]

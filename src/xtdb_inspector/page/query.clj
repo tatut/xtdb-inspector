@@ -6,12 +6,14 @@
             [xtdb.api :as xt]
             [xtdb-inspector.ui :as ui]
             [ripley.integration.xtdb :as rx]
-            [cheshire.core :as cheshire]
             [ripley.live.protocols :as p]
-            [ripley.impl.dynamic :as dyn]
             xtdb.query
             [xtdb-inspector.id :as id]
-            [clojure.core.async :as async]))
+            [clojure.string :as str]
+            [xtdb-inspector.ui.tabs :as ui.tabs]
+            [xtdb-inspector.ui.table :as ui.table]
+            [xtdb-inspector.ui.chart :as ui.chart]
+            [clojure.set :as set]))
 
 (def last-query (atom "{:find []\n :where []\n :limit 100}"))
 
@@ -32,18 +34,17 @@
       {:error (.getMessage t)})))
 
 (defn query-result-and-count-sources [db q on-error!]
-  (let [ch (async/chan)
+  (let [[results set-results!] (source/use-state [])
         result-count (atom 0)]
-    (async/thread
+    (future
       (try
         (with-open [res (xt/open-q db q)]
-          (doseq [p (->> res iterator-seq (partition-all 20))]
+          (doseq [p (->> res iterator-seq (partition-all 100))]
             (swap! result-count + (count p))
-            (async/>!! ch p)))
+            (set-results! (into (p/current-value results) p))))
         (catch Throwable t
-          (on-error! (str "Error in query: " (.getMessage t)))))
-      (async/close! ch))
-    [ch result-count]))
+          (on-error! (str "Error in query: " (.getMessage t))))))
+    [results result-count]))
 
 (defn- query! [xtdb-node set-state! query-str]
   (reset! last-query query-str)
@@ -95,13 +96,22 @@
   This separates keywords specified in pull patterns to own columns
   in the result table.
 
-  Also determines which vars are ids based on query plan."
-  [db query]
-  (let [id? (into #{}
-                  (comp
-                   (filter #(= (:attr (second %)) :crux.db/id))
-                   (map first))
-                  (:var->bindings (xtdb.query/query-plan-for db query)))
+  Also determines which vars are ids based on query."
+  [query]
+  (let [normalized (xtdb.query/normalize-query query)
+        id? (set/union
+             ;; All symbols in the E position in EAV where triples
+             (into #{}
+                   (for [w (:where normalized)
+                         :when (and (vector? w)
+                                    (symbol? (first w)))]
+                     (first w)))
+             ;; All symbols in first position of pull finds
+             (into #{}
+                   (for [f (:find normalized)
+                         :when (and (list? f)
+                                    (= 'pull (first f)))]
+                     (second f))))
         column-accessors
         (or (some->> query :keys (map keyword))
             (range))]
@@ -114,15 +124,22 @@
                   (every? #(not= '* %) (nth header 2)))
            ;; pull pattern that has no star, generate column for each
            (for [k (nth header 2)]
-             {:name (str (when column-name
-                           (str column-name ": ")) (name k))
-              :accessor [column-accessor k]})
+             {:label (str (when column-name
+                            (str column-name ": ")) (name k))
+              :accessor #(get-in % [column-accessor k])
+              :id? (when (= :xt/id k)
+                     true)})
 
            ;; any other result
-           [{:name (or column-name (pr-str header))
-             :accessor [column-accessor]
+           [{:label (or column-name (pr-str header))
+             :accessor #(get-in % [column-accessor])
              :id? (when (id? header) true)}])))
-     (:find query) column-accessors)))
+     (:find normalized) column-accessors)))
+
+(defn- bar-chartable? [find-defs]
+  (and (= 2 (count find-defs))
+       (some #(str/starts-with? (:label %) "(count ") find-defs)))
+
 
 (defn- duration [ms]
   (cond
@@ -149,7 +166,7 @@
     :else
     (let [[result-source count-source] results
           db (xt/db xtdb-node)
-          headers (unpack-find-defs db query)]
+          headers (unpack-find-defs query)]
       (h/html
        [:div
         [:div.text-sm
@@ -158,31 +175,39 @@
                     (h/dyn! %)
                     " results in "
                     (h/dyn! (duration (/ (- (System/nanoTime) timing) 1e6)))])]]
-        [:table.w-full
-         [:thead.bg-gray-200
-          [:tr
-           [::h/for [header-name (map :name headers)]
-            [:td header-name]]]]
-         [::h/live
-          {:source result-source
-           :patch :append
-           :container [:tbody]
-           :component
-           (fn [results]
-             (with-open [db (xt/open-db xtdb-node basis)]
-               (h/html
-                [::h/for [row results]
-                 [:tr
-                  [::h/for [{:keys [accessor id?]} headers
-                            :let [item (get-in row accessor)]]
-                   [:td
-                    (ui/format-value #(if (some? id?)
-                                        ;; id known based on query plan
-                                        id?
-
-                                        ;; unknown, check if it is an id
-                                        (id/valid-id? db %))
-                                     item)]]]])))}]]]))))
+        (ui.tabs/tabs
+         {:label "Table"
+          :render
+          (fn []
+            (h/html
+             (ui.table/table
+              {:key identity
+               ;; Set render method that uses format value
+               :columns (mapv (fn [{id? :id? :as hdr}]
+                                (let [is-id? (fn [v]
+                                               (if (some? id?)
+                                                 id?
+                                                 (id/valid-id? db v)))]
+                                  (assoc hdr
+                                         :render (partial ui/format-value is-id?))))
+                              headers)}
+              result-source)))}
+         (when (bar-chartable? headers)
+           {:label "Bar chart"
+            :render
+            (fn []
+              (let [{[label-header] false
+                     [value-header] true}
+                    (group-by #(str/starts-with? (:label %) "(count ")
+                                          headers)
+                    value-accessor (:accessor value-header)
+                    label-accessor (:accessor label-header)]
+                (h/html
+                 [:div
+                  (ui.chart/bar-chart
+                   {:value-accessor value-accessor
+                    :label-accessor label-accessor}
+                   result-source)])))}))]))))
 
 (defn saved-queries [db]
   (xt/q db '{:find [?e ?n]
@@ -190,17 +215,19 @@
              :where [[?e :xtdb-inspector.saved-query/name ?n]]}))
 
 (defn save-query! [xtdb-node name query]
-  (let [existing-query-id (ffirst
-                           (xt/q (xt/db xtdb-node)
-                                 '{:find [?q]
-                                   :where [[?q :xtdb-inspector.saved-query/name ?n]]
-                                   :in [?n]}
-                                 name))]
-    (xt/submit-tx
-     xtdb-node
-     [[::xt/put {:xt/id (or existing-query-id (java.util.UUID/randomUUID))
-                 :xtdb-inspector.saved-query/name name
-                 :xtdb-inspector.saved-query/query query}]])))
+  (when (and (not (str/blank? name))
+             (not (str/blank? query)))
+    (let [existing-query-id (ffirst
+                             (xt/q (xt/db xtdb-node)
+                                   '{:find [?q]
+                                     :where [[?q :xtdb-inspector.saved-query/name ?n]]
+                                     :in [?n]}
+                                   name))]
+      (xt/submit-tx
+       xtdb-node
+       [[::xt/put {:xt/id (or existing-query-id (java.util.UUID/randomUUID))
+                   :xtdb-inspector.saved-query/name name
+                   :xtdb-inspector.saved-query/query query}]]))))
 
 (defn saved-queries-ui [xtdb-node]
   (let [[query load-query!] (source/use-state nil)
@@ -217,25 +244,25 @@
       (js/eval-js-from-source query-source)
 
       [:div.flex.flex-row
-       [:div.border-2.p-2
-        "Save query as: "
-        [:input#save-query-as {:type :text :placeholder "save query as"}]
-        [:button.p-1.bg-blue-200
-         {:on-click (js/js (partial save-query! xtdb-node)
-                           (js/input-value "save-query-as")
-                           "editor.getDoc().getValue()")}
-         "Save"]]
-       [:div.border-2.p-2.ml-1
-        "Load saved query: "
-        [::h/live (rx/q {:node xtdb-node :should-update? (constantly true)} saved-queries)
-         (fn [queries]
-           (h/html
-            [:select {:name "saved-query"
-                      :on-change (js/js load-query! js/change-value)}
-             [:option {:disabled true :selected true} "--  saved query --"]
-             [::h/for [{:keys [id name]} queries
-                       :let [id (str id)]]
-              [:option {:value id} name]]]))]]]])))
+       [:div.form-control
+        [:div.input-group.input-group-md
+         [:input#save-query-as.input.input-bordered.input-md {:placeholder "Save query as"}]
+         [:button.btn.btn-square.btn-md
+          {:on-click (js/js (partial save-query! xtdb-node)
+                            (js/input-value "save-query-as")
+                            "editor.getDoc().getValue()")}
+          "Save"]]]
+       [:div.divider.divider-horizontal]
+       [::h/live (rx/q {:node xtdb-node :should-update? (constantly true)} saved-queries)
+        (fn [queries]
+          (h/html
+           [:select.select.select-bordered.w-full.max-w-xs
+            {:name "saved-query"
+             :on-change (js/js load-query! js/change-value)}
+            [:option {:disabled true :selected true} "Load saved query"]
+            [::h/for [{:keys [id name]} queries
+                      :let [id (str id)]]
+             [:option {:value id} name]]]))]]])))
 
 (defn- saved-query-by-name [db name]
   (ffirst
@@ -281,12 +308,14 @@
             [:div.bg-red-300.border-2 error-message]
             [:span]]]))]
       [:div.flex
-       [:button.p-1.bg-blue-200
+       [:button.btn.btn-primary
         {:on-click (js/js query!
                           "editor.getDoc().getValue()"
                           ""
                           )}
         "Run query"]]
+
+      [:div.divider.divider-vertical]
 
       [::h/live (source/c= (select-keys %state
                                         [:basis :running? :results :query :timing]))
