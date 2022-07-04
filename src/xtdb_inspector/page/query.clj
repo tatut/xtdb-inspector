@@ -12,7 +12,8 @@
             [clojure.string :as str]
             [xtdb-inspector.ui.tabs :as ui.tabs]
             [xtdb-inspector.ui.table :as ui.table]
-            [xtdb-inspector.ui.chart :as ui.chart]))
+            [xtdb-inspector.ui.chart :as ui.chart]
+            [clojure.set :as set]))
 
 (def last-query (atom "{:find []\n :where []\n :limit 100}"))
 
@@ -95,13 +96,22 @@
   This separates keywords specified in pull patterns to own columns
   in the result table.
 
-  Also determines which vars are ids based on query plan."
-  [db query]
-  (let [id? (into #{}
-                  (comp
-                   (filter #(= (:attr (second %)) :crux.db/id))
-                   (map first))
-                  (:var->bindings (xtdb.query/query-plan-for db query)))
+  Also determines which vars are ids based on query."
+  [query]
+  (let [normalized (xtdb.query/normalize-query query)
+        id? (set/union
+             ;; All symbols in the E position in EAV where triples
+             (into #{}
+                   (for [w (:where normalized)
+                         :when (and (vector? w)
+                                    (symbol? (first w)))]
+                     (first w)))
+             ;; All symbols in first position of pull finds
+             (into #{}
+                   (for [f (:find normalized)
+                         :when (and (list? f)
+                                    (= 'pull (first f)))]
+                     (second f))))
         column-accessors
         (or (some->> query :keys (map keyword))
             (range))]
@@ -116,13 +126,15 @@
            (for [k (nth header 2)]
              {:label (str (when column-name
                             (str column-name ": ")) (name k))
-              :accessor #(get-in % [column-accessor k])})
+              :accessor #(get-in % [column-accessor k])
+              :id? (when (= :xt/id k)
+                     true)})
 
            ;; any other result
            [{:label (or column-name (pr-str header))
              :accessor #(get-in % [column-accessor])
              :id? (when (id? header) true)}])))
-     (:find query) column-accessors)))
+     (:find normalized) column-accessors)))
 
 (defn- bar-chartable? [find-defs]
   (and (= 2 (count find-defs))
@@ -154,7 +166,7 @@
     :else
     (let [[result-source count-source] results
           db (xt/db xtdb-node)
-          headers (unpack-find-defs db query)]
+          headers (unpack-find-defs query)]
       (h/html
        [:div
         [:div.text-sm
@@ -171,7 +183,14 @@
              (ui.table/table
               {:key identity
                ;; Set render method that uses format value
-               :columns headers}
+               :columns (mapv (fn [{id? :id? :as hdr}]
+                                (let [is-id? (fn [v]
+                                               (if (some? id?)
+                                                 id?
+                                                 (id/valid-id? db v)))]
+                                  (assoc hdr
+                                         :render (partial ui/format-value is-id?))))
+                              headers)}
               result-source)))}
          (when (bar-chartable? headers)
            {:label "Bar chart"
