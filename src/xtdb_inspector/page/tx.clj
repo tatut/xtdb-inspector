@@ -6,7 +6,8 @@
             [xtdb-inspector.ui.table :as ui.table]
             [ripley.live.source :as source]
             [ripley.live.protocols :as p]
-            [xtdb-inspector.ui.edn :as ui.edn]))
+            [xtdb-inspector.ui.edn :as ui.edn]
+            [ripley.live.collection :as collection]))
 
 (defn latest-tx-source [xtdb-node]
   (let [source-atom (atom nil)
@@ -75,23 +76,37 @@
   (with-open [log (xt/open-tx-log xtdb-node (dec tx-id) true)]
     (::xt/tx-ops (.next log))))
 
+(defn tx-op-card [{:keys [operation id payload valid-time-start valid-time-end] :as _tx-op}]
+  (let [op-name (name operation)]
+    (h/html
+     [:div.card.bg-base-100.w-full.shadow-xl.mb-2
+      [:div.card-body
+       [:div.card-title
+        [:h2 op-name " "
+         (ui/format-value (constantly true) id)]]
+       [:div
+        (ui.edn/edn payload)]
+
+       [::h/when valid-time-start
+        [:div
+         "Valid time start: "
+         (ui/format-value (constantly false) valid-time-start)]]
+       [::h/when valid-time-end
+        [:div
+         "Valid time end: "
+         (ui/format-value (constantly false) valid-time-end)]]]])))
+
 (defn tx-details [xtdb-node tx-details-source]
-  (ui.table/table
-   {:columns [{:label "Op" :accessor :operation :render #(h/out! (name %))}
-              {:label "Document" :accessor :id
-               :render #(ui/format-value (constantly true) %)}
-              {:label "Payload" :accessor :payload
-               :render ui.edn/edn}
-              {:label "vt-start" :accessor :valid-time-start}
-              {:label "vt-end" :accessor :valid-time-end}]
-    :empty-message "Click on transaction to show details"}
-   (source/computed
-    #(let [{id ::xt/tx-id} %]
-       (when id
-         (into []
-               (mapcat tx-op->maps)
-               (fetch-tx-ops xtdb-node (::xt/tx-id %)))))
-    tx-details-source)))
+  (collection/live-collection
+   {:key identity
+    :render tx-op-card
+    :source (source/computed
+             #(let [{id ::xt/tx-id} %]
+                (when id
+                  (into []
+                        (mapcat tx-op->maps)
+                        (fetch-tx-ops xtdb-node (::xt/tx-id %)))))
+             tx-details-source)}))
 
 (defn render [{:keys [xtdb-node] :as _ctx}]
   (let [[tx-details-source set-tx!] (source/use-state {})]
@@ -100,6 +115,7 @@
       [:div {:class "w-2/6"}
        [:h3 "Latest transactions"]
        (tx-table (transactions xtdb-node) set-tx!)]
+      [:div.divider.divider-horizontal]
       [:div {:class "w-4/6"}
        [:h3 "Transaction details"]
        (tx-details xtdb-node tx-details-source)]])))
