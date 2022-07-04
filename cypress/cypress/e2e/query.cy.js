@@ -23,4 +23,13 @@ describe('Query page', () => {
         cy.get('select').select('test-query');
         cy.get('.CodeMirror textarea').should('have.value', q);
     });
+
+    it('has bar chart', () => {
+        cy.visit('http://localhost:3000/query');
+        cy.get('select').select('job-title counts');
+        cy.get('button').contains('Run query').click();
+        cy.get('a.tab').contains('Bar chart').click();
+        cy.get('svg text').contains('18 GIS Technical Architect');
+    });
+
 })
