@@ -28,6 +28,7 @@ describe('Query page', () => {
         cy.visit('http://localhost:3000/query');
         cy.get('select').select('job-title counts');
         cy.get('button').contains('Run query').click();
+        cy.wait(500);
         cy.get('a.tab').contains('Bar chart').click();
         cy.get('svg text').contains('18 GIS Technical Architect');
     });
