@@ -3,13 +3,14 @@
             [ripley.live.source :as source]
             [ripley.live.collection :as collection]))
 
+
 (defn bar-chart
   "Simple top to bottom bar chart for showing relative
   counts of different items.
 
   Options:
-  :width       Required width of the SVG image.
-  :bar-height  Required height of a single bar.
+  :width       Width of the SVG image. Defaults to \"100%\".
+  :bar-height  Height of a single bar. Defaults to 30.
                The SVG height will be :bar-height * (count bars).
 
   :label-accessor
@@ -33,16 +34,17 @@
   "
   [{:keys [width bar-height
            value-accessor label-accessor]
-    :or {value-accessor :value
+    :or {width "100%"
+         bar-height 30
+         value-accessor :value
          label-accessor :label}}
    bars-source]
-  {:pre [(number? width)
-         (number? bar-height)]}
-
   (let [max-source (source/computed
                     #(reduce max (map value-accessor %))
                     bars-source)
-        height (source/computed #(* bar-height (count %)) bars-source)
+        top 30
+        height (source/computed #(+ top (* bar-height (count %))) bars-source)
+        viewbox (source/computed #(str "0 0 600 " (+ top (* bar-height (count %)))) bars-source)
         ;; Add indexes to our bars so that we can calculate y position
         bars-source (source/computed
                      #(into []
@@ -50,10 +52,33 @@
                              (fn [i item]
                                {::index i ::item item}))
                             %)
-                     bars-source)]
+                     bars-source)
+        tick-source (fn [pct]
+                      (source/computed
+                       (fn [max height]
+                         {:value (Math/round (* pct max))
+                          :max max
+                          :height height})
+                       max-source height))
+        tick (fn [{:keys [value max height]}]
+               (let [x (double (* 300 (/ value max)))]
+                 (h/html
+                  [:g
+                   [:text {:text-anchor "middle"
+                           :x x :y 15
+                           :font-size "0.5em"}
+                    value]
+                   [:line {:x1 x :x2 x
+                           :y1 25 :y2 height
+                           :stroke-dasharray "3 3"
+                           :stroke-width "3"
+                           :stroke "black"}]])))]
     (h/html
-     [:svg {:width width :height [::h/live height]
-            :fill "currentColor"}
+     [:svg {:width width
+            ;:height [::h/live height]
+            :viewBox [::h/live viewbox]
+            :fill "currentColor"
+            :preserveAspectRatio "xMinYMin"}
       (collection/live-collection
        {:source bars-source
         :key (comp label-accessor ::item)
@@ -65,14 +90,21 @@
         :render (fn [{::keys [index max item]}]
                   (let [value (value-accessor item)
                         label (label-accessor item)
-                        y (* bar-height (+ index 0.1))
-                        w (* 0.66 (/ value max) width)
+                        y (double (+ top (* bar-height (+ index 0.1))))
+                        w (double (* 300 (/ value max)))
                         value-and-label (str value " " label)]
                     (h/html
                      [:g
                       [:rect.text-primary {:y y
                                            :width w
                                            :height (* 0.8 bar-height)}]
-                      [:text.text-info {:x (+ w (* 0.05 width))
+                      [:text.text-info {:x 310 ;(+ w (* 0.05 width))
                                         :y (+ y (/ bar-height 2))}
-                       value-and-label]])))})])))
+                       value-and-label]])))})
+      [:g.ticks
+       ;; add 25%, 50% and 75% ticks
+       [::h/live (tick-source 0.25) tick]
+       [::h/live (tick-source 0.50) tick]
+       [::h/live (tick-source 0.75) tick]]
+
+      ])))

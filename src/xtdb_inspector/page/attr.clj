@@ -65,7 +65,7 @@
       " by count"
              ;; PENDING: use viewBox to standardize the space in rendering
              ;; and use some proportional size here
-      (ui.chart/bar-chart {:width 500 :bar-height 30}
+      (ui.chart/bar-chart {}
                           (rx/q {:node xtdb-node}
                                 {:find '[v (count v)]
                                  :keys '[label value]

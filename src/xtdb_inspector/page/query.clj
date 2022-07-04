@@ -186,9 +186,7 @@
                 (h/html
                  [:div
                   (ui.chart/bar-chart
-                   {:width 500
-                    :bar-height 30
-                    :value-accessor value-accessor
+                   {:value-accessor value-accessor
                     :label-accessor label-accessor}
                    result-source)])))}))]))))
 
