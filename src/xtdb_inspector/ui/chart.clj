@@ -1,7 +1,8 @@
 (ns xtdb-inspector.ui.chart
   (:require [ripley.html :as h]
             [ripley.live.source :as source]
-            [ripley.live.collection :as collection]))
+            [ripley.live.collection :as collection]
+            [ripley.template :as template]))
 
 
 (defn bar-chart
@@ -47,11 +48,22 @@
         viewbox (source/computed #(str "0 0 600 " (+ top (* bar-height (count %)))) bars-source)
         ;; Add indexes to our bars so that we can calculate y position
         bars-source (source/computed
-                     #(into []
-                            (map-indexed
-                             (fn [i item]
-                               {::index i ::item item}))
-                            %)
+                     (fn [bars]
+                       (let [max (reduce max 1 (map value-accessor bars))]
+                         (into []
+                               (map-indexed
+                                (fn [i item]
+                                   (let [value (value-accessor item)
+                                         label (label-accessor item)
+                                         y (double (+ top (* bar-height (+ i 0.1))))
+                                         w (double (* 300 (/ value max)))
+                                         value-and-label (str value " " label)]
+                                     {:i i
+                                      :y y
+                                      :w w
+                                      :text-y (+ y (/ bar-height 2))
+                                      :value-and-label value-and-label})))
+                               bars)))
                      bars-source)
         tick-source (fn [pct]
                       (source/computed
@@ -72,36 +84,51 @@
                            :y1 25 :y2 height
                            :stroke-dasharray "3 3"
                            :stroke-width "3"
-                           :stroke "black"}]])))]
+                           :stroke "black"}]])))
+        id (gensym "barchart")]
     (h/html
-     [:svg {:width width
-            :viewBox [::h/live viewbox]
-            :fill "currentColor"
-            :preserveAspectRatio "xMinYMin"}
-      (collection/live-collection
-       {:source bars-source
-        :key (comp label-accessor ::item)
-        :container-element :g
-        :item-source-fn #(source/computed
-                          (fn [max item]
-                            (assoc item ::max max))
-                          max-source %)
-        :render (fn [{::keys [index max item]}]
-                  (let [value (value-accessor item)
-                        label (label-accessor item)
-                        y (double (+ top (* bar-height (+ index 0.1))))
-                        w (double (* 300 (/ value max)))
-                        value-and-label (str value " " label)]
-                    (h/html
-                     [:g
-                      [:rect.text-primary {:y y
-                                           :width w
-                                           :height (* 0.8 bar-height)}]
-                      [:text.text-info {:x 310 ;(+ w (* 0.05 width))
-                                        :y (+ y (/ bar-height 2))}
-                       value-and-label]])))})
-      [:g.ticks
-       ;; add 25%, 50% and 75% ticks
-       [::h/live (tick-source 0.25) tick]
-       [::h/live (tick-source 0.50) tick]
-       [::h/live (tick-source 0.75) tick]]])))
+     [:span
+      (template/use-template
+       (fn [{:keys [y w text-y value-and-label]}]
+         (h/html
+          [:g
+           [:rect.text-primary {:y y
+                                :width w
+                                :height (* 0.8 bar-height)}]
+           [:text.text-info {:x 310
+                             :y text-y}
+            value-and-label]]))
+       (str "#" id)
+       bars-source)
+      [:svg {:width width
+             :viewBox [::h/live viewbox]
+             :fill "currentColor"
+             :preserveAspectRatio "xMinYMin"}
+       [:g {:id id}]
+       #_(collection/live-collection
+          {:source bars-source
+           :key (comp label-accessor ::item)
+           :container-element :g
+           :item-source-fn #(source/computed
+                             (fn [max item]
+                               (assoc item ::max max))
+                             max-source %)
+           :render (fn [{::keys [index max item]}]
+                     (let [value (value-accessor item)
+                           label (label-accessor item)
+                           y (double (+ top (* bar-height (+ index 0.1))))
+                           w (double (* 300 (/ value max)))
+                           value-and-label (str value " " label)]
+                       (h/html
+                        [:g
+                         [:rect.text-primary {:y y
+                                              :width w
+                                              :height (* 0.8 bar-height)}]
+                         [:text.text-info {:x 310 ;(+ w (* 0.05 width))
+                                           :y (+ y (/ bar-height 2))}
+                          value-and-label]])))})
+       [:g.ticks
+        ;; add 25%, 50% and 75% ticks
+        [::h/live (tick-source 0.25) tick]
+        [::h/live (tick-source 0.50) tick]
+        [::h/live (tick-source 0.75) tick]]]])))

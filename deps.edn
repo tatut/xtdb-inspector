@@ -1,11 +1,13 @@
 {:paths ["src" "resources"]
  :deps {tatut/ripley {:git/url "https://github.com/tatut/ripley.git"
-                      :sha "c6d1b5501830446b7a2d6d7bbfe09f75410d864e"}
-
+                      :sha "e33818ae6f93b2000d6b31929325070176048f65"}
+        tatut/ripley-alpine {:git/url "https://github.com/tatut/ripley-alpine.git"
+                             :sha "fff1fc58a105f5791245140cc50151a2b5309c4b"}
         compojure/compojure {:mvn/version "1.6.1"}
         http-kit/http-kit {:mvn/version "2.5.3"}
         com.xtdb/xtdb-core {:mvn/version "1.21.0"}
         com.xtdb/xtdb-metrics {:mvn/version "1.21.0"}
         com.xtdb/xtdb-lucene {:mvn/version "1.21.0"}}
  :aliases {:dev {:extra-paths ["dev-src"]
-                 :extra-deps {com.xtdb/xtdb-http-server {:mvn/version "1.21.0"}}}}}
+                 :extra-deps {tatut/ripley {:local/root "../ripley"}
+                              com.xtdb/xtdb-http-server {:mvn/version "1.21.0"}}}}}
