@@ -17,7 +17,6 @@ until $(curl --output /dev/null --silent --fail http://localhost:3000/doc); do
     fi
 done
 
-echo "DONE"
-#cd cypress
-#npm ci
-#npx cypress run
+cd cypress
+npm ci
+npx cypress run
