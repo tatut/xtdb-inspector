@@ -2,7 +2,7 @@
  :deps {tatut/ripley {:git/url "https://github.com/tatut/ripley.git"
                       :sha "e33818ae6f93b2000d6b31929325070176048f65"}
         tatut/ripley-alpine {:git/url "https://github.com/tatut/ripley-alpine.git"
-                             :sha "fff1fc58a105f5791245140cc50151a2b5309c4b"}
+                             :sha "57d3f2cb99cd05c6579ba1d975bd0af858a64fdb"}
         compojure/compojure {:mvn/version "1.6.1"}
         http-kit/http-kit {:mvn/version "2.5.3"}
         com.xtdb/xtdb-core {:mvn/version "1.21.0"}
