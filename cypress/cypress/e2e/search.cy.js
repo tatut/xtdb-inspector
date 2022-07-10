@@ -12,6 +12,7 @@ describe('Lucene search',()=>{
     it('links to document',()=>{
         cy.visit('http://localhost:3000/doc');
         cy.get('input[name=search]').type('nathanial');
+        cy.wait(500);
         cy.get('table.lucene-results').find('tr').contains('{:person-id 1}');
         cy.get('table.lucene-results tr a').click();
         cy.location().should((loc)=>{
