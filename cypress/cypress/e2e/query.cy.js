@@ -30,6 +30,7 @@ describe('Query page', () => {
         cy.get('button').contains('Run query').click();
         cy.wait(500);
         cy.get('a.tab').contains('Bar chart').click();
+        cy.wait(500);
         cy.get('svg text').contains('18 GIS Technical Architect');
     });
 
