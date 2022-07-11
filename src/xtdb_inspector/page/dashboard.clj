@@ -68,8 +68,6 @@
 
 (defmethod render-widget :query
   [{:keys [db query-results query]}]
-
-  (println "renskaa: " db)
   (page.query/query-results-table
    db
    (page.query/unpack-find-defs query)
