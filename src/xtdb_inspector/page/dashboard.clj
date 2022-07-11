@@ -60,10 +60,21 @@
   (ui.chart/pie
    (merge
     {:label-accessor first
-     :value-accessor second}
+     :value-accessor second
+     :format-value format-number}
     (select-keys w [:width :height :value-accessor :label-accessor
                     :max-items :other-label]))
 
+   query-results))
+
+(defmethod render-widget :bars
+  [{:keys [query-results] :as w}]
+  (ui.chart/bar-chart
+   (merge
+    {:label-accessor first
+     :value-accessor second}
+    (select-keys w [:width :bar-height
+                    :value-accessor :label-accessor]))
    query-results))
 
 (defmethod render-widget :query

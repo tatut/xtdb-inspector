@@ -147,11 +147,15 @@
   :colors    Optional vector of colors to use.
              If there are less colors than max-items+1
              the same color will be repeated.
+  :format-value
+             Function to format value to show after legend.
+             Defaults to (constantly \"\") (eg. not showing it)
 
   "
-  [{:keys [width height colors] :as config
+  [{:keys [width height colors format-value] :as config
     :or {width "100%" height "100%"
-         colors ["#6050DC" "#D52DB7" "#FF2E7E" "#FF6B45" "#FFAB05"]}}
+         colors ["#6050DC" "#D52DB7" "#FF2E7E" "#FF6B45" "#FFAB05"]
+         format-value (constantly "")}}
    slices-source]
   (let [x (fn x
             ([ang] (x 1.0 ang))
@@ -182,7 +186,8 @@
                               tx (x 0.7 half-ang)
                               ty (y 0.7 half-ang)]
                           (recur items
-                                 (conj acc {:label label
+                                 (conj acc {:value (format-value value)
+                                            :label label
                                             :start start
                                             :end end
                                             :d (str "M " (pos start)
@@ -218,11 +223,11 @@
 
     ;; Render legend using template
     (template/use-template
-     (fn [{:keys [legend-style label]}]
+     (fn [{:keys [legend-style label value]}]
        (h/html
         [:div.whitespace-nowrap
          [:div.inline-block.w-4.h-4 {:style legend-style}]
-         [:span.mx-2 label]]))
+         [:span.mx-2 label " " value]]))
      (str "#" legend-id)
      slices)
 
