@@ -59,8 +59,10 @@
   ;; Insert some test people data
   (xt/submit-tx
    @xtdb
-   (for [{:keys [id first_name last_name email gender job_title address]}
-         (read-string (slurp (io/resource "testdata/people.edn")))]
+   (for [{:keys [id first_name last_name email gender job_title address date_of_birth]}
+         (read-string (slurp (io/resource "testdata/people.edn")))
+         :let [[year month day] (map #(Long/parseLong %)
+                                     (str/split date_of_birth #"-"))]]
      [::xt/put
       {:xt/id {:person-id id}
        :first-name first_name
@@ -68,7 +70,9 @@
        :email email
        :gender (-> gender str/lower-case keyword)
        :job-title job_title
-       :address address}]))
+       :address address
+       :birthday (format "%02d-%02d" month day) ; to quickly fetch "today's birthdays"
+       :date-of-birth (java.time.LocalDate/of year month day)}]))
 
   ;; Insert a saved query
   (xt/submit-tx
@@ -118,7 +122,42 @@
                   :label "Gender distribution"
                   :query '{:find [g (count g)]
                            :where [[_ :gender g]]
-                           :group-by [g]}}]}}]]))
+                           :group-by [g]}}
+
+                 {:id :todays-birthdays
+                  :type :query
+                  :label "Upcoming birthdays"
+                  :col-span 4
+                  :query '{:find [u
+                                  (if (= 0 days-to-birthday)
+                                    (str fn " " ln " turns " age " today. HAPPY BIRTHDAY!")
+                                    (str fn " " ln " turns " age " in " days-to-birthday " days"))
+                                  days-to-birthday]
+                           :keys [user celebrate in-days]
+                           :where [[u :birthday bd]
+                                   [u :first-name fn]
+                                   [u :last-name ln]
+                                   [(>= bd today)]
+                                   [(<= bd week-from-now)]
+                                   [u :date-of-birth dob]
+                                   [(user/days-until-birthday dob) days-to-birthday]
+                                   [(user/birthday-age dob) age]]
+                           :order-by [[days-to-birthday :asc]]
+                           :in [today week-from-now]}
+                  :query-params '(letfn [(fmt [d]
+                                           (.format (java.text.SimpleDateFormat. "MM-dd") d))]
+                                   [(fmt (java.util.Date.))
+                                    (fmt (java.util.Date.
+                                          (+ (System/currentTimeMillis)
+                                             (* 1000 60 60 24 7))))])}]}}]]))
+
+(defn days-until-birthday [dob]
+  (let [now (java.time.LocalDate/now)
+        this-year-birthday (.withYear dob (.getYear now))]
+    (.getDays (.until now this-year-birthday))))
+
+(defn birthday-age [dob]
+  (inc (.getYears (.until dob (java.time.LocalDate/now)))))
 
 (defn db [] (xt/db @xtdb))
 

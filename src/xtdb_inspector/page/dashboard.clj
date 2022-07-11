@@ -12,7 +12,9 @@
             [xtdb-inspector.ui :as ui]
             xtdb.query
             [ripley.live.source :as source]
-            [xtdb-inspector.ui.chart :as ui.chart]))
+            [xtdb-inspector.ui.chart :as ui.chart]
+            [xtdb-inspector.page.query :as page.query]
+            [clojure.tools.logging :as log]))
 
 (defmulti render-widget
   "Render a widget's HTML.
@@ -64,8 +66,18 @@
 
    query-results))
 
+(defmethod render-widget :query
+  [{:keys [db query-results query]}]
+
+  (println "renskaa: " db)
+  (page.query/query-results-table
+   db
+   (page.query/unpack-find-defs query)
+   query-results))
+
+
 (defn- widget-container
-  [{:keys [label col-span] :as widget
+  [{:keys [label col-span db] :as widget
     :or {col-span 1}} widget-source]
   (let [class (str "card bg-base-100 shadow-xl "
                    (case col-span
@@ -77,14 +89,22 @@
      [:div {:class class}
       [:div.card-body
        [:div.card-title label]
-       (render-widget (assoc widget :query-results
+       (render-widget (assoc widget
+                             :db db
+                             :query-results
                              (source/computed :query-results widget-source)))]])))
 
 (defn- update-widgets [xtdb-node widgets state]
   (let [db (xt/db xtdb-node)]
-    (doseq [{:keys [id query]} widgets]
+    (doseq [{:keys [id query query-params]} widgets
+            :let [params (when query-params
+                           (try
+                             (eval query-params)
+                             (catch Throwable t
+                               (log/warn t "Query parameter evaluation threw exception")
+                               nil)))]]
       (swap! state assoc-in [:widgets id :query-results]
-             (xt/q db query)))))
+             (apply xt/q db query params)))))
 
 (defn render [{:keys [xtdb-node request]}]
   (let [dashboard-name (get-in request [:route-params :dashboard])
@@ -99,14 +119,15 @@
                         (source/computed
                          #(get-in % [:widgets id])
                          state))
-        configured-widgets (:widgets (:xtdb-inspector.dashboard/config dashboard))]
-    (def *state state)
+        configured-widgets (:widgets (:xtdb-inspector.dashboard/config dashboard))
+        db (xt/db xtdb-node)]
     (future
       (update-widgets xtdb-node configured-widgets state))
     (h/html
      [:div.grid.grid-cols-4.gap-2
       [::h/for [w configured-widgets]
-       (widget-container w (widget-source w))]])))
+       ;; PENDING: when source updates, widget should use later db as well
+       (widget-container (assoc w :db db) (widget-source w))]])))
 
 (defn render-listing [{:keys [xtdb-node]}]
   (let [dashboards (xt/q (xt/db xtdb-node)

@@ -171,8 +171,7 @@
                     (loop [[s & items] items
                            acc []
                            total 0
-                           [c & colors] (cycle colors)
-                           ]
+                           [c & colors] (cycle colors)]
                       (if-not s
                         acc
                         (let [[label value] s
