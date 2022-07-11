@@ -9,6 +9,7 @@
             [xtdb-inspector.page.query :as page.query]
             [xtdb-inspector.page.attr :as page.attr]
             [xtdb-inspector.page.tx :as page.tx]
+            [xtdb-inspector.page.dashboard :as page.dashboard]
             [ripley.live.context :as context]))
 
 
@@ -38,6 +39,10 @@
           (page ctx req #'page.attr/render))
      (GET "/tx" req
           (page ctx req #'page.tx/render))
+     (GET "/dashboard" req
+          (page ctx req #'page.dashboard/render-listing))
+     (GET "/dashboard/:dashboard" req
+          (page ctx req #'page.dashboard/render))
      (route/resources "/"))))
 
 

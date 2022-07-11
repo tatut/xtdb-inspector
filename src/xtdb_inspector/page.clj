@@ -75,7 +75,8 @@
   [["/query" "Query"]
    ["/doc" "Documents"]
    ["/attr" "Attributes"]
-   ["/tx" "Transactions"]])
+   ["/tx" "Transactions"]
+   ["/dashboard" "Dashboards"]])
 
 (defn app-bar [ctx search! results]
   (h/html

@@ -86,7 +86,39 @@
                :xtdb-inspector.saved-query/name "users with name"
                :xtdb-inspector.saved-query/query
                (str "{:find [?u (pull ?u [:first-name :last-name])]\n"
-                    " :where [[?u :first-name]]}")}]]))
+                    " :where [[?u :first-name]]}")}]])
+
+  ;; Insert a dashboard
+  (xt/submit-tx
+   @xtdb
+   [[::xt/put {:xt/id {:dashboard "demo"}
+               :xtdb-inspector.dashboard/name "demo"
+               :xtdb-inspector.dashboard/description "Demonstrates dashboard widgets"
+               :xtdb-inspector.dashboard/config
+               {:update-duration (java.time.Duration/ofSeconds 60)
+                :widgets
+                [{:id :dev-count
+                  :type :stat
+                  :label "Developers"
+                  :description "# people any developer job title"
+                  :query '{:find [(count d)]
+                           :where [[(text-search :job-title "developer") [[d]]]]}}
+
+                 {:id :male-percentage
+                  :type :radial-progress
+                  :label "Male %"
+                  :query '{:find [(* 100.0 (/ (count e) total))]
+                           :where [[e :gender :male]
+                                   [(q [:find (count g) :where [g :gender]])
+                                    [[total]]]]}}
+                 {:id :genders
+                  :type :pie
+                  :col-span 2
+                  :max-items 4
+                  :label "Gender distribution"
+                  :query '{:find [g (count g)]
+                           :where [[_ :gender g]]
+                           :group-by [g]}}]}}]]))
 
 (defn db [] (xt/db @xtdb))
 
