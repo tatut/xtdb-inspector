@@ -20,13 +20,16 @@
     (h/html [:span.text-emerald-700 str])))
 
 (defmethod render clojure.lang.PersistentVector [ctx vec]
-  (h/html
-   [:div.flex
-    "["
-    [:div.inline-flex.space-x-2
-     [::h/for [v vec]
-      [:div.inline-block (render ctx v)]]]
-    "]"]))
+  (let [dir (if (every? map? vec)
+              "flex-col"
+              "flex-row")]
+    (h/html
+     [:div.flex
+      "["
+      [:div.inline-flex.space-x-2 {:class dir}
+       [::h/for [v vec]
+        [:div.inline-block (render ctx v)]]]
+      "]"])))
 
 ;; Need to style table cells by hand, otherwise this will inherit
 ;; styling from table that contains it
