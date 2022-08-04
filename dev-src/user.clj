@@ -59,8 +59,10 @@
   ;; Insert some test people data
   (xt/submit-tx
    @xtdb
-   (for [{:keys [id first_name last_name email gender job_title address]}
-         (read-string (slurp (io/resource "testdata/people.edn")))]
+   (for [{:keys [id first_name last_name email gender job_title address date_of_birth]}
+         (read-string (slurp (io/resource "testdata/people.edn")))
+         :let [[year month day] (map #(Long/parseLong %)
+                                     (str/split date_of_birth #"-"))]]
      [::xt/put
       {:xt/id {:person-id id}
        :first-name first_name
@@ -68,7 +70,9 @@
        :email email
        :gender (-> gender str/lower-case keyword)
        :job-title job_title
-       :address address}]))
+       :address address
+       :birthday (format "%02d-%02d" month day) ; to quickly fetch "today's birthdays"
+       :date-of-birth (java.time.LocalDate/of year month day)}]))
 
   ;; Insert a saved query
   (xt/submit-tx
@@ -86,7 +90,74 @@
                :xtdb-inspector.saved-query/name "users with name"
                :xtdb-inspector.saved-query/query
                (str "{:find [?u (pull ?u [:first-name :last-name])]\n"
-                    " :where [[?u :first-name]]}")}]]))
+                    " :where [[?u :first-name]]}")}]])
+
+  ;; Insert a dashboard
+  (xt/submit-tx
+   @xtdb
+   [[::xt/put {:xt/id {:dashboard "demo"}
+               :xtdb-inspector.dashboard/name "demo"
+               :xtdb-inspector.dashboard/description "Demonstrates dashboard widgets"
+               :xtdb-inspector.dashboard/config
+               {:update-duration (java.time.Duration/ofSeconds 60)
+                :widgets
+                [{:id :dev-count
+                  :type :stat
+                  :label "Developers"
+                  :description "# people any developer job title"
+                  :query '{:find [(count d)]
+                           :where [[(text-search :job-title "developer") [[d]]]]}}
+
+                 {:id :male-percentage
+                  :type :radial-progress
+                  :label "Male %"
+                  :query '{:find [(* 100.0 (/ (count e) total))]
+                           :where [[e :gender :male]
+                                   [(q [:find (count g) :where [g :gender]])
+                                    [[total]]]]}}
+                 {:id :genders
+                  :type :pie
+                  :col-span 2
+                  :max-items 4
+                  :label "Gender distribution"
+                  :query '{:find [g (count g)]
+                           :where [[_ :gender g]]
+                           :group-by [g]}}
+
+                 {:id :todays-birthdays
+                  :type :query
+                  :label "Upcoming birthdays"
+                  :col-span 4
+                  :query '{:find [u
+                                  (if (= 0 days-to-birthday)
+                                    (str fn " " ln " turns " age " today. HAPPY BIRTHDAY!")
+                                    (str fn " " ln " turns " age " in " days-to-birthday " days"))
+                                  days-to-birthday]
+                           :keys [user celebrate in-days]
+                           :where [[u :birthday bd]
+                                   [u :first-name fn]
+                                   [u :last-name ln]
+                                   [(>= bd today)]
+                                   [(<= bd week-from-now)]
+                                   [u :date-of-birth dob]
+                                   [(user/days-until-birthday dob) days-to-birthday]
+                                   [(user/birthday-age dob) age]]
+                           :order-by [[days-to-birthday :asc]]
+                           :in [today week-from-now]}
+                  :query-params '(letfn [(fmt [d]
+                                           (.format (java.text.SimpleDateFormat. "MM-dd") d))]
+                                   [(fmt (java.util.Date.))
+                                    (fmt (java.util.Date.
+                                          (+ (System/currentTimeMillis)
+                                             (* 1000 60 60 24 7))))])}]}}]]))
+
+(defn days-until-birthday [dob]
+  (let [now (java.time.LocalDate/now)
+        this-year-birthday (.withYear dob (.getYear now))]
+    (.getDays (.until now this-year-birthday))))
+
+(defn birthday-age [dob]
+  (inc (.getYears (.until dob (java.time.LocalDate/now)))))
 
 (defn db [] (xt/db @xtdb))
 

@@ -152,6 +152,20 @@
     :else
     (format "%.2fms" ms)))
 
+(defn query-results-table [db headers result-source]
+  (ui.table/table
+   {:key identity
+    ;; Set render method that uses format value
+    :columns (mapv (fn [{id? :id? :as hdr}]
+                     (let [is-id? (fn [v]
+                                    (if (some? id?)
+                                      id?
+                                      (id/valid-id? db v)))]
+                       (assoc hdr
+                              :render (partial ui/format-value is-id?))))
+                   headers)}
+   result-source))
+
 (defn render-results [xtdb-node {:keys [basis running? results query timing] :as r}]
   (cond
     ;; Query is running
@@ -179,19 +193,7 @@
          {:label "Table"
           :render
           (fn []
-            (h/html
-             (ui.table/table
-              {:key identity
-               ;; Set render method that uses format value
-               :columns (mapv (fn [{id? :id? :as hdr}]
-                                (let [is-id? (fn [v]
-                                               (if (some? id?)
-                                                 id?
-                                                 (id/valid-id? db v)))]
-                                  (assoc hdr
-                                         :render (partial ui/format-value is-id?))))
-                              headers)}
-              result-source)))}
+            (query-results-table db headers result-source))}
          (when (bar-chartable? headers)
            {:label "Bar chart"
             :render

@@ -4,3 +4,7 @@
 /resources/public/styles.css
 /package-lock.json
 /cypress/node_modules/
+/.clj-kondo/
+/.lsp/
+/cypress/cypress/screenshots/
+/cypress/cypress/videos/
