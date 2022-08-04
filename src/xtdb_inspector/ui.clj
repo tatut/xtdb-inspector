@@ -47,10 +47,9 @@
   "Format a given value, if it is a valid id, render a link to view it."
   [is-id? value]
   (if (vector? value)
-    (h/html
-     [:ul
-      [::h/for [v value]
-       [:li (format-value is-id? v)]]])
+    (ui.edn/edn {:render-item (fn [_ctx v]
+                                (format-value is-id? v))}
+                value)
     (let [href (when (is-id? value)
                  (str "/doc/" (id/doc-id-param value)))
           disp (display value)

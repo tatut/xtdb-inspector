@@ -19,40 +19,35 @@
   (let [str (pr-str kw)]
     (h/html [:span.text-emerald-700 str])))
 
-(defmethod render clojure.lang.PersistentVector [ctx vec]
-  (let [dir (if (every? map? vec)
-              "flex-col"
-              "flex-row")]
-    (h/html
-     [:div.flex
-      "["
-      [:div.inline-flex.space-x-2 {:class dir}
-       [::h/for [v vec]
-        [:div.inline-block (render ctx v)]]]
-      "]"])))
-
-;; Need to style table cells by hand, otherwise this will inherit
-;; styling from table that contains it
-(def key-cell-style "padding: 0 1em 0 0;")
-(def val-cell-style "padding: 0;")
+(defmethod render clojure.lang.PersistentVector [{render-item :render-item :as ctx
+                                                  :or {render-item render}} vec]
+  (h/html
+   [:div.flex
+    "["
+    [:div.inline-flex.space-x-2
+     [::h/for [v vec]
+      [:div.inline-block (render-item (dissoc ctx :render-item) v)]]]
+    "]"]))
 
 (defmethod render clojure.lang.IPersistentMap [ctx m]
-  (let [entries (seq m)
-        normal-entries (butlast entries)
-        last-entry (last entries)]
-    (h/html
-     [:div.inline-block.flex
-      "{"
-      [:table
-       [::h/for [[key val] normal-entries]
-        [:tr.whitespace-pre
-         [:td.align-top {:style key-cell-style}
-          (render ctx key)]
-         [:td.align-top {:style val-cell-style} (render ctx val)]]]
-       [:tr.whitespace-pre
-        [:td.align-top {:style key-cell-style} (render ctx (key last-entry))]
-        [:td.align-top {:style val-cell-style}
-         [:div.inline-block (render ctx (val last-entry))] "}"]]]])))
+  (if (empty? m)
+    (h/html [:div.inline-block "{}"])
+    (let [entries (seq m)
+          normal-entries (butlast entries)
+          last-entry (last entries)]
+      (h/html
+       [:div.inline-block.flex
+        "{"
+        [:table
+         [::h/for [[key val] normal-entries]
+          [:tr.whitespace-pre
+           [:td.align-top.py-0.pl-0.pr-2 (render ctx key)]
+           [:td.align-top.p-0 (render ctx val)]]]
+         [:tr.whitespace-pre
+          [:td.align-top.py-0.pl-0.pr-2 (render ctx (key last-entry))]
+          [:td.align-top.p-0 [:div.inline-block (render ctx (val last-entry))] "}"]]]]))))
 
-(defn edn [thing]
-  (render {} thing))
+(defn edn
+  ([thing] (edn {} thing))
+  ([ctx thing]
+   (render ctx thing)))
