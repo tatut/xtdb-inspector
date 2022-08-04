@@ -21,13 +21,17 @@
 
 (defmethod render clojure.lang.PersistentVector [{render-item :render-item :as ctx
                                                   :or {render-item render}} vec]
-  (h/html
-   [:div.flex
-    "["
-    [:div.inline-flex.space-x-2
-     [::h/for [v vec]
-      [:div.inline-block (render-item (dissoc ctx :render-item) v)]]]
-    "]"]))
+  (let [cls (str "inline-flex space-x-2 flex-wrap "
+                 (if (every? map? vec)
+                   "flex-col"
+                   "flex-row"))]
+    (h/html
+     [:div.flex
+      "["
+      [:div {:class cls}
+       [::h/for [v vec]
+        [:div.inline-block (render-item (dissoc ctx :render-item) v)]]]
+      "]"])))
 
 (defmethod render clojure.lang.IPersistentMap [ctx m]
   (if (empty? m)
