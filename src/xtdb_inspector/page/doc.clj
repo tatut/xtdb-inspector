@@ -213,13 +213,16 @@
      [::h/live edit?
       (fn [edit?]
         (if-not edit?
-          (let [id (id/valid-id? db v)]
+          (let [id (when-not (vector? v)
+                     (id/valid-id? db v))]
             (h/html
              [:div.hover-trigger
               [:div.flex
                [::h/if id
                 (inline-doc-view xtdb-node db v)
-                (ui/format-value (constantly id) v)]
+                (ui/format-value (if (vector? v)
+                                   (partial id/valid-id? db)
+                                   (constantly id)) v)]
                [:div.flex-grow.flex.justify-end.items-start
                 [:button.hover-target.fixed.bg-blue-500.rounded.px-1
                  {:on-click #(set-edit! true)}
