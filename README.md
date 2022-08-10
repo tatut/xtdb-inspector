@@ -37,6 +37,13 @@ monitoring reporter in the XTDB node config:
 
 ## Changes
 
+### 2022-08-10
+- Show latest transaction first by default
+
+### 2022-07
+- Dashboard page
+- Graphs for attribute values
+
 ### 2022-06-29
 - Pretty print EDN values (better coloring and layout)
 
