@@ -23,7 +23,7 @@
 (defn transactions [xtdb-node]
   (source/computed
    #(with-open [log (xt/open-tx-log xtdb-node (max 0 (- % 100)) false)]
-      (vec (iterator-seq log)))
+      (vec (reverse (iterator-seq log))))
    (latest-tx-source xtdb-node)))
 
 (defn tx-table [tx-log-source on-tx-selected]
