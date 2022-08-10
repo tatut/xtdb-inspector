@@ -69,8 +69,8 @@
       :id (first data)}]
 
     ;; Fallback
-    {:operation op
-     :payload tx-op}))
+    [{:operation op
+      :payload tx-op}]))
 
 (defn- fetch-tx-ops [xtdb-node tx-id]
   (with-open [log (xt/open-tx-log xtdb-node (dec tx-id) true)]
