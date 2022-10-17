@@ -190,7 +190,7 @@
 (defn- inline-doc-view
   "Component to allow drilling down to nested documents inline without
   navigating to them."
-  [xtdb-node _db id]
+  [{:keys [xtdb-node] :as ctx} _db id]
   (let [[show set-show!] (source/use-state false)]
     (h/html
      [:div {:class [::h/live (source/computed #(str "collapse collapse-"
@@ -205,9 +205,9 @@
                   [::h/if % "-" "+"]])]]
       [:div.collapse-content
        [::h/when show
-        (render-doc-data xtdb-node id (doc-source xtdb-node id))]]])))
+        (render-doc-data ctx id (doc-source xtdb-node id))]]])))
 
-(defn- render-editable-value [xtdb-node db entity-id [k v]]
+(defn- render-editable-value [{:keys [xtdb-node] :as ctx} db entity-id [k v]]
   (let [[edit? set-edit!] (source/use-state false)]
     (h/html
      [::h/live edit?
@@ -219,7 +219,7 @@
              [:div.hover-trigger
               [:div.flex
                [::h/if id
-                (inline-doc-view xtdb-node db v)
+                (inline-doc-view ctx db v)
                 (ui/format-value (if (vector? v)
                                    (partial id/valid-id? db)
                                    (constantly id)) v)]
@@ -231,6 +231,18 @@
                                 (partial update-doc! xtdb-node
                                          entity-id k))))])))
 
+(defn- render-readonly-value [ctx db entity-id [k v]]
+  (let [id (when-not (vector? v)
+             (id/valid-id? db v))]
+    (h/html
+     [:div.hover-trigger
+      [:div.flex
+       [::h/if id
+        (inline-doc-view ctx db v)
+        (ui/format-value (if (vector? v)
+                           (partial id/valid-id? db)
+                           (constantly id)) v)]]])))
+
 (defn render-doc-id-header [id]
   (let [id-str (pr-str id)]
     (h/html
@@ -241,18 +253,18 @@
        {:on-click "s=document.getElementById('doc-id');s.select();navigator.clipboard.writeText(s.value);"}
        "copy"]])))
 
-(defn- render-doc-data [xtdb-node id entity-source]
+(defn- render-doc-data [{:keys [xtdb-node allow-editing?] :as ctx} id entity-source]
   (ui.table/table
    {:key key
     :class "table table-compact table-zebra w-full"
     :columns [{:label "Attribute" :accessor key
                :render ui.edn/edn}
               {:label "Value" :accessor val
-               :render-full (partial render-editable-value xtdb-node
-                                     (xt/db xtdb-node)
-                                     id)}]
+               :render-full (partial (if allow-editing? render-editable-value render-readonly-value)
+                                     ctx (xt/db xtdb-node) id)}]
     :order [key :asc]
-    :render-after #(new-attr-row xtdb-node id)}
+    :render-after (when allow-editing?
+                    #(new-attr-row xtdb-node id))}
    (source/computed
     (comp seq #(dissoc % :xt/id))
     entity-source)))
@@ -264,14 +276,14 @@
          '{:find [(pull e [*])]
            :in [e]} id)))
 
-(defn render [{:keys [xtdb-node request] :as _ctx}]
+(defn render [{:keys [xtdb-node request] :as ctx}]
   (let [id (some-> request :params :doc-id id/read-doc-id)
         entity-source (doc-source xtdb-node id)
         [show-history-source set-show-history!] (source/use-state false)]
     (h/html
      [:div
       (render-doc-id-header id)
-      (render-doc-data xtdb-node id entity-source)
+      (render-doc-data ctx id entity-source)
 
       [:h3.bg-gray-300 "Links from other documents"]
       [::h/live (future (links-to xtdb-node id))

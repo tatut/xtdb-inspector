@@ -19,36 +19,41 @@
      ctx
      #(page-fn ctx))))
 
-(defn inspector-handler [xtdb-node]
-  (let [ctx {:xtdb-node xtdb-node}]
-    (routes
-     (context/connection-handler "/__ripley-live" :ping-interval 45)
-     (GET "/doc" req
-          (page ctx req #'page.doc/render-form))
-     (GET "/doc/:doc-id" req
-          (page ctx req #'page.doc/render))
-     (GET "/query" req
-          (page ctx req #'page.query/render))
-     (GET "/query/:query" req
-          (page ctx req #'page.query/render))
-     (GET "/attr" req
-          (page ctx req #'page.attr/render))
-     (GET "/attr/:keyword" req
-          (page ctx req #'page.attr/render))
-     (GET "/attr/:namespace/:keyword" req
-          (page ctx req #'page.attr/render))
-     (GET "/tx" req
-          (page ctx req #'page.tx/render))
-     (GET "/dashboard" req
-          (page ctx req #'page.dashboard/render-listing))
-     (GET "/dashboard/:dashboard" req
-          (page ctx req #'page.dashboard/render))
-     (route/resources "/"))))
+(defn inspector-handler
+  ([xtdb-node] (inspector-handler xtdb-node {}))
+  ([xtdb-node {:keys [allow-editing?]
+               :or {allow-editing? true}}]
+   (let [ctx {:xtdb-node xtdb-node
+              :allow-editing? allow-editing?}]
+     (routes
+      (context/connection-handler "/__ripley-live" :ping-interval 45)
+      (GET "/doc" req
+        (page ctx req #'page.doc/render-form))
+      (GET "/doc/:doc-id" req
+        (page ctx req #'page.doc/render))
+      (GET "/query" req
+        (page ctx req #'page.query/render))
+      (GET "/query/:query" req
+        (page ctx req #'page.query/render))
+      (GET "/attr" req
+        (page ctx req #'page.attr/render))
+      (GET "/attr/:keyword" req
+        (page ctx req #'page.attr/render))
+      (GET "/attr/:namespace/:keyword" req
+        (page ctx req #'page.attr/render))
+      (GET "/tx" req
+        (page ctx req #'page.tx/render))
+      (GET "/dashboard" req
+        (page ctx req #'page.dashboard/render-listing))
+      (GET "/dashboard/:dashboard" req
+        (page ctx req #'page.dashboard/render))
+      (route/resources "/")))))
 
 
-(defn start [{:keys [port xtdb-node]
-              :or {port 3000}}]
+(defn start [{:keys [port xtdb-node allow-editing?]
+              :or {port 3000
+                   allow-editing? true}}]
   {:pre [(some? xtdb-node)]}
   (http-kit/run-server
-   (inspector-handler xtdb-node)
+   (inspector-handler xtdb-node {:allow-editing? allow-editing?})
    {:port port}))

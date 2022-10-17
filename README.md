@@ -37,6 +37,9 @@ monitoring reporter in the XTDB node config:
 
 ## Changes
 
+### 2022-10-17
+- Add `:allow-editing?` configuration option (default: `true`) for disabling doc edit functionality
+
 ### 2022-08-10
 - Show latest transaction first by default
 
