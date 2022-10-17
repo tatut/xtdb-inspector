@@ -13,18 +13,25 @@
             [ripley.live.context :as context]))
 
 
-(defn- page [ctx req page-fn]
-  (let [ctx (assoc ctx :request req)]
-    (page/page-response
-     ctx
-     #(page-fn ctx))))
+(defn- page [{wrap :wrap-page-fn :as ctx} req page-fn]
+  (let [handler
+        (fn [req]
+          (let [ctx (assoc ctx :request req)]
+            (page/page-response
+             ctx
+             #(page-fn ctx))))]
+    (if wrap
+      (wrap req handler)
+      (handler req))))
+
 
 (defn inspector-handler
   ([xtdb-node] (inspector-handler xtdb-node {}))
-  ([xtdb-node {:keys [allow-editing?]
+  ([xtdb-node {:keys [allow-editing? wrap-page-fn]
                :or {allow-editing? true}}]
    (let [ctx {:xtdb-node xtdb-node
-              :allow-editing? allow-editing?}]
+              :allow-editing? allow-editing?
+              :wrap-page-fn wrap-page-fn}]
      (routes
       (context/connection-handler "/__ripley-live" :ping-interval 45)
       (GET "/doc" req

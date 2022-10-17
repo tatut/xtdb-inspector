@@ -39,6 +39,7 @@ monitoring reporter in the XTDB node config:
 
 ### 2022-10-17
 - Add `:allow-editing?` configuration option (default: `true`) for disabling doc edit functionality
+- Support `:wrap-page-fn` that wraps any page rendering with a custom fn
 
 ### 2022-08-10
 - Show latest transaction first by default
