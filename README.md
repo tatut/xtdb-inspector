@@ -37,6 +37,9 @@ monitoring reporter in the XTDB node config:
 
 ## Changes
 
+### 2022-10-18
+- Support exporting query to EDN file
+
 ### 2022-10-17
 - Add `:allow-editing?` configuration option (default: `true`) for disabling doc edit functionality
 - Support `:wrap-page-fn` that wraps any page rendering with a custom fn

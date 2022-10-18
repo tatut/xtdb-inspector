@@ -13,7 +13,9 @@
             [xtdb-inspector.ui.tabs :as ui.tabs]
             [xtdb-inspector.ui.table :as ui.table]
             [xtdb-inspector.ui.chart :as ui.chart]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [ring.util.io :as ring-io]
+            [clojure.java.io :as io]))
 
 (def last-query (atom "{:find []\n :where []\n :limit 100}"))
 
@@ -247,9 +249,9 @@
 
       [:div.flex.flex-row
        [:div.form-control
-        [:div.input-group.input-group-md
-         [:input#save-query-as.input.input-bordered.input-md {:placeholder "Save query as"}]
-         [:button.btn.btn-square.btn-md
+        [:div.input-group.input-group-sm
+         [:input#save-query-as.input.input-bordered.input-sm {:placeholder "Save query as"}]
+         [:button.btn.btn-square.btn-sm
           {:on-click (js/js (partial save-query! xtdb-node)
                             (js/input-value "save-query-as")
                             "editor.getDoc().getValue()")}
@@ -258,7 +260,7 @@
        [::h/live (rx/q {:node xtdb-node :should-update? (constantly true)} saved-queries)
         (fn [queries]
           (h/html
-           [:select.select.select-bordered.w-full.max-w-xs
+           [:select.select.select-bordered.w-full.max-w-xs.select-sm
             {:name "saved-query"
              :on-change (js/js load-query! js/change-value)}
             [:option {:disabled true :selected true} "Load saved query"]
@@ -309,16 +311,53 @@
            [::h/if error?
             [:div.bg-red-300.border-2 error-message]
             [:span]]]))]
-      [:div.flex
-       [:button.btn.btn-primary
+      [:div.flex.py-2
+       [:button.btn.btn-primary.btn-sm
         {:on-click (js/js query!
                           "editor.getDoc().getValue()"
-                          ""
-                          )}
-        "Run query"]]
+                          "")}
+        "Run query"]
+
+       [:form#export-f.px-2 {:name :export
+                             :action "query/export"
+                             :method :POST
+                             :enctype "application/x-www-form-urlencoded"}
+        [:input#export-i {:type :hidden :name :query}]
+        [:button.btn.btn-secondary.btn-sm
+         {:on-click "document.querySelector('#export-i').value=editor.getDoc().getValue(); document.forms['export'].submit();"}
+         "Export (EDN)"]]]
 
       [:div.divider.divider-vertical]
 
       [::h/live (source/c= (select-keys %state
                                         [:basis :running? :results :query :timing]))
        (partial render-results xtdb-node)]])))
+
+(defn export-query [{xtdb-node :xtdb-node :as _ctx}
+                    {{query "query"} :params :as _req}]
+
+  (let [{:keys [q error]} (safe-read query)]
+    (if q
+      {:status 200
+       :headers {"Content-Type" "application/edn"
+                 "Content-Disposition"
+                 (str "attachment; filename=\"query-"
+                      (.format (java.text.SimpleDateFormat. "yyyy-MM-dd_HH:mm:ss") (java.util.Date.))
+                      ".edn\"")}
+       :body (ring-io/piped-input-stream
+              (fn [ostream]
+                (let [db (xt/db xtdb-node)]
+                  (with-open [out (io/writer ostream)]
+                    (.write out "{:query ")
+                    (.write out (pr-str q))
+                    (.write out "\n :db-basis ")
+                    (.write out (pr-str (xt/db-basis db)))
+                    (.write out "\n :results [\n")
+                    (with-open [results (xt/open-q db q)]
+                      (doseq [result (iterator-seq results)]
+                        (.write out (pr-str result))
+                        (.write out "\n")))
+                    (.write out "]}")))))}
+
+      {:status 400
+       :body (str "Don't understand query: " error)})))
