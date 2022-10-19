@@ -125,7 +125,12 @@
                   (= 'pull (first header))
                   (every? #(not= '* %) (nth header 2)))
            ;; pull pattern that has no star, generate column for each
-           (for [k (nth header 2)]
+           (for [k (nth header 2)
+                 :let [k (if (map? k)
+                           ;; nested pull
+                           (first (keys k))
+                           ;; attribute pull
+                           k)]]
              {:label (str (when column-name
                             (str column-name ": ")) (name k))
               :accessor #(get-in % [column-accessor k])
