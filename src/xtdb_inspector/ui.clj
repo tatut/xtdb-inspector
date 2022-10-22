@@ -4,6 +4,7 @@
             [ripley.html :as h]
             [clojure.string :as str]
             [ripley.js :as js]
+            [xtdb-inspector.util :refer [root-path]]
             [xtdb-inspector.ui.edn :as ui.edn])
   (:import (java.time LocalDate LocalTime LocalDateTime Duration Instant)
            (java.time.format DateTimeFormatter FormatStyle)))
@@ -51,7 +52,7 @@
                                 (format-value is-id? v))}
                 value)
     (let [href (when (is-id? value)
-                 (str "/doc/" (id/doc-id-param value)))
+                 (str root-path "/doc/" (id/doc-id-param value)))
           disp (display value)
           custom-display? (not= ::no-custom-display disp)
           stringified (if-not custom-display?

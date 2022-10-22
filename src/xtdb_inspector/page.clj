@@ -2,6 +2,7 @@
   "Main page template that sets up styles and app bar"
   (:require [ripley.html :as h]
             [xtdb-inspector.metrics :as metrics]
+            [xtdb-inspector.util :refer [root-path ->route]]
             [xtdb.api :as xt]
             [ripley.live.source :as source]
             [clojure.string :as str]
@@ -18,7 +19,7 @@
                           (fn [[e v a]]
                             ;; id, href, attr, value
                             [(pr-str e)
-                             (str "/doc/" (id/doc-id-param e))
+                             (str root-path "/doc/" (id/doc-id-param e))
                              (pr-str a)
                              (pr-str v)]) results)})
              results)
@@ -72,11 +73,11 @@
             [:td {:x-html "r[3]"}]]]]]]]))))
 
 (def links
-  [["/query" "Query"]
-   ["/doc" "Documents"]
-   ["/attr" "Attributes"]
-   ["/tx" "Transactions"]
-   ["/dashboard" "Dashboards"]])
+  [[(->route "/query") "Query"]
+   [(->route "/doc") "Documents"]
+   [(->route "/attr") "Attributes"]
+   [(->route "/tx") "Transactions"]
+   [(->route "/dashboard") "Dashboards"]])
 
 (defn app-bar [ctx search! results]
   (h/html

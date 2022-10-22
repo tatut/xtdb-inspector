@@ -4,7 +4,7 @@
             [ripley.html :as h]
             [xtdb-inspector.ui :as ui]
             [xtdb-inspector.ui.table :as ui.table]
-            [xtdb-inspector.util :refer [enc]]
+            [xtdb-inspector.util :refer [enc root-path]]
             [ripley.live.source :as source]
             [xtdb-inspector.id :as id]
             [xtdb-inspector.ui.tabs :as ui.tabs]
@@ -84,7 +84,7 @@
 (defn- render-attr-listing [{:keys [xtdb-node]}]
   (ui.table/table
    {:columns [{:label "Attribute" :accessor first
-               :render #(ui/link (str "/attr/" (enc (subs (str %) 1)))
+               :render #(ui/link (str root-path "/attr/" (enc (subs (str %) 1)))
                                  (pr-str %))}
               {:label "Values count" :accessor second}]
     :key first

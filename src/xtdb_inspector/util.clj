@@ -8,3 +8,10 @@
   (-> x
       URLEncoder/encode
       (str/replace "+" "%20")))
+
+(def root-path
+  (or (System/getenv "XTDB_INSPECTOR_ROOT_PATH") "/i"))
+
+(defn ->route
+  [s]
+  (str root-path s))
