@@ -12,13 +12,12 @@
             [xtdb-inspector.page.tx :as page.tx]
             [xtdb-inspector.page.dashboard :as page.dashboard]
             [ripley.live.context :as context]
-            [ring.middleware.params :as ring-params]
-            [fipp.edn :refer [pprint] :rename {pprint fipp}]))
+            [ring.middleware.params :as ring-params]))
 
 (defn- page [{wrap :wrap-page-fn :as ctx} req page-fn]
   (let [handler
         (fn [req]
-          (fipp [:page (select-keys req [:uri :websocket? :request-method :compojure/route])])
+          #_(fipp [:page (select-keys req [:uri :websocket? :request-method :compojure/route])])
           (let [ctx (assoc ctx :request req)]
             (page/page-response
              ctx
