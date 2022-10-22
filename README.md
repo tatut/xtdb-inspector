@@ -37,6 +37,9 @@ monitoring reporter in the XTDB node config:
 
 ## Changes
 
+### 2022-10-19
+- Fix nested pull problem in query page
+
 ### 2022-10-18
 - Support exporting query to EDN file
 
