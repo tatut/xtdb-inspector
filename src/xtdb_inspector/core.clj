@@ -58,7 +58,7 @@
          (page ctx req #'page.dashboard/render-listing))
        (GET (->route "/dashboard/:dashboard") req
          (page ctx req #'page.dashboard/render))
-       (route/resources (->route "/")))))))
+       (route/resources "/"))))))
 
 (defn start [{:keys [port xtdb-node allow-editing?]
               :or {port 3000
