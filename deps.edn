@@ -5,11 +5,9 @@
                              :sha "57d3f2cb99cd05c6579ba1d975bd0af858a64fdb"}
         compojure/compojure {:mvn/version "1.7.0"}
         http-kit/http-kit {:mvn/version "2.6.0"}
-        com.xtdb/xtdb-core {:mvn/version "1.22.0"}
-        com.xtdb/xtdb-metrics {:mvn/version "1.22.0"}
-        com.xtdb/xtdb-lucene {:mvn/version "1.22.0"}}
+        com.xtdb/xtdb-core {:mvn/version "1.21.0"}
+        com.xtdb/xtdb-metrics {:mvn/version "1.21.0"}
+        com.xtdb/xtdb-lucene {:mvn/version "1.21.0"}}
  :aliases {:dev {:extra-paths ["dev-src"]
                  :extra-deps {com.xtdb/xtdb-http-server {:mvn/version "1.22.0"}
-                              ;fipp/fipp {:mvn/version "0.6.26"}
-                              org.apache.logging.log4j/log4j-core {:mvn/version "2.17.1"}
                               dk.ative/docjure {:mvn/version "1.18.0"}}}}}
