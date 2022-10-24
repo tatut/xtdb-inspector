@@ -10,7 +10,7 @@
       (str/replace "+" "%20")))
 
 (def root-path
-  (or (System/getenv "XTDB_INSPECTOR_ROOT_PATH") ""))
+  (or (System/getenv "XTDB_INSPECTOR_URI_PREFIX") ""))
 
 (defn ->route
   [s]
