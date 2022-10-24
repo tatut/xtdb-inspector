@@ -9,5 +9,5 @@
         com.xtdb/xtdb-metrics {:mvn/version "1.21.0"}
         com.xtdb/xtdb-lucene {:mvn/version "1.21.0"}}
  :aliases {:dev {:extra-paths ["dev-src"]
-                 :extra-deps {com.xtdb/xtdb-http-server {:mvn/version "1.22.0"}
+                 :extra-deps {com.xtdb/xtdb-http-server {:mvn/version "1.21.0"}
                               dk.ative/docjure {:mvn/version "1.18.0"}}}}}
