@@ -149,4 +149,7 @@
 (comment
   (load-sales-data @user/xtdb (str (System/getenv "HOME")
                                    "/Downloads/US_Regional_Sales_data.xlsx"))
-  (add-dashboard @user/xtdb))
+  (add-dashboard @user/xtdb)
+
+
+  :ok)

@@ -17,9 +17,10 @@ Query viewer and saved queries:
 ## Running
 
 To simply try it out, start repl with `:dev` alias:
-- eval `(start)`
-- eval `(some-docs)` to generate test docs
-- open http://localhost:3000/doc/%3Ahello in browser
+
+- eval `(start)` in your REPL
+- eval `(some-docs)` in your REPL to generate test docs
+- open [http://localhost:3000/doc/%3Ahello](http://localhost:3000/doc/%3Ahello) in browser
 
 Other way is to embed in an existing web application that
 uses XTDB. The `xtdb-inspector.core/inspector-handler` returns
@@ -35,7 +36,20 @@ monitoring reporter in the XTDB node config:
 :xtdb-inspector.metrics/reporter {}
 ```
 
+## Custom URI prefix
+
+Sometime (e.g., when embedding `xtdb-inspector` in another web application) there is a need for having all of its URLs prefixed. Simply set the environment variable `XTDB_INSPECTOR_URI_PREFIX`:
+
+- run `export XTDB_INSPECTOR_URI_PREFIX=/_inspector` in your shell
+- eval `(start)` in your REPL
+- eval `(some-docs)` in your REPL
+- open [http://localhost:3000/_inspector/doc/%3Ahello](http://localhost:3000/_inspector/doc/%3Ahello) in a browser.
+
+
 ## Changes
+
+### 2022-10-25
+- Support custom URI prefix
 
 ### 2022-10-19
 - Fix nested pull problem in query page

@@ -10,6 +10,7 @@
   (:require [ripley.html :as h]
             [xtdb.api :as xt]
             [xtdb-inspector.ui :as ui]
+            [xtdb-inspector.util :refer [root-path]]
             xtdb.query
             [ripley.live.source :as source]
             [xtdb-inspector.ui.chart :as ui.chart]
@@ -147,7 +148,7 @@
      [:div "Available dashboards:"
       [:ul
        [::h/for [[{:xtdb-inspector.dashboard/keys [name description]}] dashboards]
-        [:li (ui/link (str "/dashboard/" name) name) " " description]]
+        [:li (ui/link (str root-path "/dashboard/" name) name) " " description]]
        [::h/when (empty? dashboards)
         [:div.alert.alert-warning
          "No dashboards defined."]]]])))

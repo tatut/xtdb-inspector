@@ -4,6 +4,7 @@
   (:require [org.httpkit.server :as http-kit]
             [compojure.core :refer [routes GET POST]]
             [compojure.route :as route]
+            [xtdb-inspector.util :refer [->route]]
             [xtdb-inspector.page :as page]
             [xtdb-inspector.page.doc :as page.doc]
             [xtdb-inspector.page.query :as page.query]
@@ -13,10 +14,10 @@
             [ripley.live.context :as context]
             [ring.middleware.params :as ring-params]))
 
-
 (defn- page [{wrap :wrap-page-fn :as ctx} req page-fn]
   (let [handler
         (fn [req]
+          #_(fipp [:page (select-keys req [:uri :websocket? :request-method :compojure/route])])
           (let [ctx (assoc ctx :request req)]
             (page/page-response
              ctx
@@ -24,7 +25,6 @@
     (if wrap
       (wrap req handler)
       (handler req))))
-
 
 (defn inspector-handler
   ([xtdb-node] (inspector-handler xtdb-node {}))
@@ -36,30 +36,29 @@
      (ring-params/wrap-params
       (routes
        (context/connection-handler "/__ripley-live" :ping-interval 45)
-       (GET "/doc" req
-            (page ctx req #'page.doc/render-form))
-       (GET "/doc/:doc-id" req
-            (page ctx req #'page.doc/render))
-       (GET "/query" req
-            (page ctx req #'page.query/render))
-       (POST "/query/export" req
-             (page.query/export-query ctx req))
-       (GET "/query/:query" req
-            (page ctx req #'page.query/render))
-       (GET "/attr" req
-            (page ctx req #'page.attr/render))
-       (GET "/attr/:keyword" req
-            (page ctx req #'page.attr/render))
-       (GET "/attr/:namespace/:keyword" req
-            (page ctx req #'page.attr/render))
-       (GET "/tx" req
-            (page ctx req #'page.tx/render))
-       (GET "/dashboard" req
-            (page ctx req #'page.dashboard/render-listing))
-       (GET "/dashboard/:dashboard" req
-            (page ctx req #'page.dashboard/render))
+       (GET (->route "/doc") req
+         (page ctx req #'page.doc/render-form))
+       (GET (->route "/doc/:doc-id") req
+         (page ctx req #'page.doc/render))
+       (GET (->route "/query") req
+         (page ctx req #'page.query/render))
+       (POST (->route "/query/export") req
+         (page.query/export-query ctx req))
+       (GET (->route "/query/:query") req
+         (page ctx req #'page.query/render))
+       (GET (->route "/attr") req
+         (page ctx req #'page.attr/render))
+       (GET (->route "/attr/:keyword") req
+         (page ctx req #'page.attr/render))
+       (GET (->route "/attr/:namespace/:keyword") req
+         (page ctx req #'page.attr/render))
+       (GET (->route "/tx") req
+         (page ctx req #'page.tx/render))
+       (GET (->route "/dashboard") req
+         (page ctx req #'page.dashboard/render-listing))
+       (GET (->route "/dashboard/:dashboard") req
+         (page ctx req #'page.dashboard/render))
        (route/resources "/"))))))
-
 
 (defn start [{:keys [port xtdb-node allow-editing?]
               :or {port 3000
