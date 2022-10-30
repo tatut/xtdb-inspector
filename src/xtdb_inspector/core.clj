@@ -17,7 +17,6 @@
 (defn- page [{wrap :wrap-page-fn :as ctx} req page-fn]
   (let [handler
         (fn [req]
-          #_(fipp [:page (select-keys req [:uri :websocket? :request-method :compojure/route])])
           (let [ctx (assoc ctx :request req)]
             (page/page-response
              ctx
