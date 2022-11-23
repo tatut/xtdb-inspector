@@ -57,34 +57,34 @@
    ["docs" "xtdb.index-store.indexed-docs"]])
 
 (defn render-meters [title meters-to-render metrics-source]
-  (letfn [(fmt [n]
-            (let [formatted (format "%.1f" n)]
-              (h/html [:span formatted])))
-          (meter-source [meter-name time-frame]
-            (source/computed
-             #(get-in % [:meters meter-name time-frame])
-             metrics-source))]
-    (h/html
-     [:div.meters
-      [:table.w-full.text-right.border.border-collapse.border-gray-500
-       [:tr.bg-gray-300
-        [:td.border.border-collapse.border-gray-500 title]
-        [:td.border.border-collapse.border-gray-500 "1m"]
-        [:td.border.border-collapse.border-gray-500 "5m"]
-        [:td.border.border-collapse.border-gray-500 "15m"]
-        [:td.border.border-collapse.border-gray-500 "cnt"]]
-       [::h/for [[label meter-name] meters-to-render]
-        [:tr
-         [:td.border.border-collapse.border-gray-500 label]
-         [:td.border.border-collapse.border-gray-500
-          [::h/live (meter-source meter-name :min1) fmt]]
-         [:td.border.border-collapse.border-gray-500
-          [::h/live (meter-source meter-name :min5) fmt]]
-         [:td.border.border-collapse.border-gray-500
-          [::h/live (meter-source meter-name :min15) fmt]]
-         [:td.border.border-collapse.border-gray-500.font-semibold
-          [::h/live (meter-source meter-name :count)
-           #(h/html [:span %])]]]]]])))
+  (let [nf (java.text.NumberFormat/getNumberInstance)]
+    (letfn [(fmt [n]
+              (let [formatted (if n (.format nf n) "")]
+                (h/html [:span formatted])))
+            (meter-source [meter-name time-frame]
+              (source/computed
+               #(get-in % [:meters meter-name time-frame])
+               metrics-source))]
+      (h/html
+       [:div.meters
+        [:table.w-full.text-right.border.border-collapse.border-gray-500
+         [:tr.bg-gray-300
+          [:td.border.border-collapse.border-gray-500 title]
+          [:td.border.border-collapse.border-gray-500 "1m"]
+          [:td.border.border-collapse.border-gray-500 "5m"]
+          [:td.border.border-collapse.border-gray-500 "15m"]
+          [:td.border.border-collapse.border-gray-500 "cnt"]]
+         [::h/for [[label meter-name] meters-to-render]
+          [:tr
+           [:td.border.border-collapse.border-gray-500 label]
+           [:td.border.border-collapse.border-gray-500
+            [::h/live (meter-source meter-name :min1) fmt]]
+           [:td.border.border-collapse.border-gray-500
+            [::h/live (meter-source meter-name :min5) fmt]]
+           [:td.border.border-collapse.border-gray-500
+            [::h/live (meter-source meter-name :min15) fmt]]
+           [:td.border.border-collapse.border-gray-500.font-semibold
+            [::h/live (meter-source meter-name :count) fmt]]]]]]))))
 
 
 (defn metrics-ui [ctx]

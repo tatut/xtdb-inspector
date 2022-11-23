@@ -48,6 +48,9 @@ Sometime (e.g., when embedding `xtdb-inspector` in another web application) ther
 
 ## Changes
 
+### 2022-11-23
+- Format metrics numbers with NumberFormat
+
 ### 2022-10-25
 - Support custom URI prefix
 
