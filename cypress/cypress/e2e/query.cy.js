@@ -27,6 +27,7 @@ describe('Query page', () => {
     it('has bar chart', () => {
         cy.visit('http://localhost:3000/query');
         cy.get('select').select('job-title counts');
+        cy.location('search').should('match', /\?query=job-title%20counts/);
         cy.get('button').contains('Run query').click();
         cy.wait(500);
         cy.get('a.tab').contains('Bar chart').click();
