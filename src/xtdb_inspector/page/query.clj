@@ -17,7 +17,8 @@
             [ring.util.io :as ring-io]
             [clojure.java.io :as io]))
 
-(def last-query (atom "{:find []\n :where []\n :limit 100}"))
+(def last-query (atom {:query-text "{:find []\n :where []\n :limit 100}"
+                       :in-args {}}))
 
 (def codemirror-js
   ["https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.63.1/codemirror.min.js"
@@ -35,12 +36,18 @@
     (catch Throwable t
       {:error (.getMessage t)})))
 
-(defn query-result-and-count-sources [db q on-error!]
+(defn- state-val [[state _]]
+  (p/current-value state))
+
+(defn- swap-state! [[_ set-state! :as state] update-fn & args]
+  (set-state! (apply update-fn (state-val state) args)))
+
+(defn query-result-and-count-sources [db q args on-error!]
   (let [[results set-results!] (source/use-state [])
         result-count (atom 0)]
     (future
       (try
-        (with-open [res (xt/open-q db q)]
+        (with-open [res (apply xt/open-q db q args)]
           (doseq [p (->> res iterator-seq (partition-all 100))]
             (swap! result-count + (count p))
             (set-results! (into (p/current-value results) p))))
@@ -48,36 +55,41 @@
           (on-error! (str "Error in query: " (.getMessage t))))))
     [results result-count]))
 
-(defn- query! [xtdb-node set-state! query-str]
-  (reset! last-query query-str)
-  (let [{:keys [q error]} (safe-read query-str)]
+(defn- query! [xtdb-node state query-str]
+  (let [merge-state! (partial swap-state! state merge)
+        {:keys [q error]} (safe-read query-str)
+        {:keys [in-args in-args-names]} (state-val state)
+        args (when in-args
+               (map in-args in-args-names))]
+    (reset! last-query {:query-text query-str
+                        :in-args in-args})
     (if error
-      (set-state! {:error? true
-                   :error-message error
-                   :running? false
-                   :results nil})
-      (do
-        (set-state! {:running? true
-                     :error? false
+      (merge-state! {:error? true
+                     :error-message error
+                     :running? false
                      :results nil})
+      (do
+        (merge-state! {:running? true
+                       :error? false
+                       :results nil})
         (try
           (let [db (xt/db xtdb-node)]
-            (set-state! {:running? false
-                         :error? false
-                         :results (query-result-and-count-sources
-                                   db q
-                                   #(set-state! {:error? true
-                                                 :error-message %
-                                                 :running? false
-                                                 :results nil}))
-                         :query q
-                         :timing (System/nanoTime)
-                         :basis (xt/db-basis db)}))
+            (merge-state! {:running? false
+                           :error? false
+                           :results (query-result-and-count-sources
+                                     db q args
+                                     #(merge-state! {:error? true
+                                                     :error-message %
+                                                     :running? false
+                                                     :results nil}))
+                           :query q
+                           :timing (System/nanoTime)
+                           :basis (xt/db-basis db)}))
           (catch Throwable e
-            (set-state! {:error? true
-                         :error-message (str "Error in query: " (.getMessage e))
-                         :running? false
-                         :results nil})))))))
+            (merge-state! {:error? true
+                           :error-message (str "Error in query: " (.getMessage e))
+                           :running? false
+                           :results nil})))))))
 
 (defn- loading [label]
   (h/html
@@ -275,41 +287,80 @@
 
 (defn- saved-query-by-name [db name]
   (ffirst
-   (xt/q db '{:find [q]
-              :where [[query :xtdb-inspector.saved-query/name name]
-                      [query :xtdb-inspector.saved-query/query q]]
+   (xt/q db '{:find [(pull query [*])]
+              :where [[query :xtdb-inspector.saved-query/name name]]
               :in [name]}
          name)))
 
+(defn- in-args-table [set-arg! {:keys [in-args-names in-args] :as foo}]
+  (h/html
+   [:div {:class "query-in-args w-1/2"}
+    [::h/when (seq in-args-names)
+     [:table.table.table-compact
+      [:thead
+       [:tr [:td "Argument"] [:td "Value"]]]
+      [:tbody
+       [::h/for [arg in-args-names
+                 :let [arg-name (name arg)]]
+        [:tr
+         [:td arg-name]
+         [:td (ui/input-any #(set-arg! arg %)
+                            (get in-args arg ::ui/empty))]]]]]]]))
+
+(defn validate! [swap-state! text]
+  (when-let [{q :q} (safe-read text)]
+    (swap-state! assoc :in-args-names (:in q))))
+
+
 
 (defn render [{:keys [xtdb-node request]}]
-  (let [query-text (or
-                    (some->> request :params :query
-                             (saved-query-by-name (xt/db xtdb-node)))
-                    @last-query)
-        [state set-state!] (source/use-state {:query nil
-                                              :running? false
-                                              :results nil
-                                              :error? false})
-        query! (partial query! xtdb-node set-state!)]
+  (let [{:keys [query-text in-args]}
+        (or
+         (some-> request :params :query
+                 (as-> n (saved-query-by-name (xt/db xtdb-node) n))
+                 (set/rename-keys {:xtdb-inspector.saved-query/name :query-text
+                                   :xtdb-inspector.saved-query/in-args :in-args}))
+         @last-query)
+
+        [src _ :as state]
+        (source/use-state {:query nil
+                           :in-args-names (some-> query-text safe-read :q :in)
+                           :in-args (or in-args {})
+                           :running? false
+                           :results nil
+                           :error? false})
+        query!     (partial query! xtdb-node state)
+        on-change! (js/js-debounced
+                    500
+                    (partial validate! (partial swap-state! state))
+                    "editor.getDoc().getValue()")]
     (h/html
      [:div
       [::h/for [js codemirror-js]
        [:script {:src js}]]
       [:link {:rel "stylesheet" :href codemirror-css}]
       [:h2 "Query"]
-      [:div.unreset
-       [:textarea#query query-text]]
-      [:script
-       (h/out!
-        "var editor = CodeMirror.fromTextArea(document.getElementById('query'), {"
-        "lineNumbers: true,"
-        "autoCloseBrackets: true,"
-        "matchBrackets: true,"
-        "mode: 'text/x-clojure'"
-        "})")]
+      [:div.flex.flex-row.w-full
+       [:div {:class "unreset w-1/2"}
+        [:textarea#query query-text]]
+       [:div.divider.divider-vertical]
+       [::h/live (source/c= (select-keys %src [:in-args-names :in-args]))
+        (partial in-args-table
+                 (fn [arg val]
+                   (swap-state! state update :in-args assoc arg val)))]
+       [:script
+        (h/out!
+         "var editor = CodeMirror.fromTextArea(document.getElementById('query'), {"
+         "lineNumbers: true,"
+         "autoCloseBrackets: true,"
+         "matchBrackets: true,"
+         "mode: 'text/x-clojure'"
+         "}); "
+         "editor.on('change', _=> document.getElementById('validateq').click());")]
+       [:button#validateq.hidden {:on-click on-change!}]]
+
       (saved-queries-ui xtdb-node)
-      [::h/live (source/c= (select-keys %state [:error? :error-message]))
+      [::h/live (source/c= (select-keys %src [:error? :error-message]))
        (fn [{:keys [error? error-message] :as f}]
          (h/html
           [:span
@@ -319,8 +370,7 @@
       [:div.flex.py-2
        [:button.btn.btn-primary.btn-sm
         {:on-click (js/js query!
-                          "editor.getDoc().getValue()"
-                          "")}
+                          "editor.getDoc().getValue()")}
         "Run query"]
 
        [:form#export-f.px-2 {:name :export
@@ -334,7 +384,7 @@
 
       [:div.divider.divider-vertical]
 
-      [::h/live (source/c= (select-keys %state
+      [::h/live (source/c= (select-keys %src
                                         [:basis :running? :results :query :timing]))
        (partial render-results xtdb-node)]])))
 

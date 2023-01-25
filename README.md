@@ -48,6 +48,9 @@ Sometime (e.g., when embedding `xtdb-inspector` in another web application) ther
 
 ## Changes
 
+### 2023-01-25
+- Preliminary support for `:in` arguments in queries
+
 ### 2022-11-23
 - Format metrics numbers with NumberFormat
 

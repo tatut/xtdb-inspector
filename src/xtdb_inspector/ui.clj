@@ -5,7 +5,9 @@
             [clojure.string :as str]
             [ripley.js :as js]
             [xtdb-inspector.util :refer [root-path]]
-            [xtdb-inspector.ui.edn :as ui.edn])
+            [xtdb-inspector.ui.edn :as ui.edn]
+            [ripley.live.source :as source]
+            [ripley.live.protocols :as p])
   (:import (java.time LocalDate LocalTime LocalDateTime Duration Instant)
            (java.time.format DateTimeFormatter FormatStyle)))
 
@@ -126,3 +128,42 @@
 (defmethod editor-widget-for :default [_ v set-value!]
   (input "text" (format-for-edit pr-str v) (comp set-value! parse-edn)
          :placeholder "EDN"))
+
+(defn editor-types []
+  (-> editor-widget-for
+      methods
+      (dissoc :default)
+      keys))
+
+(defn input-any
+  "Generic component to edit an input value. Defaults to EDN
+  text input, but shows a selection to input any value that
+  has an editor multimethod."
+  [on-change! value]
+  (let [type (or (some #(when (= (class value) %) %) (editor-types))
+                 :edn)
+
+        [value-type set-value-type!] (source/use-state type)]
+    (h/html
+     [:div.form-control
+      [:div.input-group.input-group-sm
+       [:select.select.select-sm.select-bordered
+        {:on-change (js/js #(set-value-type!
+                             (or (first (filter (fn [t]
+                                                  (= % (short-class-name t)))
+                                                (editor-types)))
+                                 :edn))
+                           "event.target.value")}
+        [:option {:value "EDN"
+                  :selected (= :edn type)} "EDN"]
+        [::h/for [cls (editor-types)
+                  :let [class-name (short-class-name cls)
+                        selected (= cls type)]]
+         [:option {:value class-name :selected selected} class-name]]]
+
+       [::h/live value-type
+        (fn [type]
+          (editor-widget-for
+           type value
+           (fn [to]
+             (on-change! to))))]]])))

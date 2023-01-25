@@ -144,46 +144,18 @@
       rerender-source
       (fn [_]
         (let [[attr-name set-attr-name!] (source/use-state "")
-              [value-type set-value-type!] (source/use-state :not-set)
-              editor-types (-> ui/editor-widget-for
-                               methods
-                               (dissoc :default)
-                               keys)]
+              on-change! #(do
+                            (rerender!)
+                            (update-doc! xtdb-node id
+                                         (ui/parse-edn (p/current-value attr-name))
+                                         %))]
           (attr-row
            (fn []
              ;; We don't want live component here, no need to rerender when it changes
              (ui/input "text" "" set-attr-name!
                        :placeholder "New attr kw"))
            (fn []
-             (h/html
-              [:div.form-control
-               [:div.input-group.input-group-sm
-
-
-                [:select.select.select-sm.select-bordered
-                 {:on-change (js/js #(set-value-type!
-                                      (or (first (filter (fn [t]
-                                                           (= % (ui/short-class-name t)))
-                                                         editor-types))
-                                          :edn))
-                                    "event.target.value")}
-                 [:option {:value ""} "Type"]
-                 [:option {:value "EDN"} "EDN"]
-                 [::h/for [cls editor-types
-                           :let [class-name (ui/short-class-name cls)]]
-                  [:option {:value class-name} class-name]]]
-
-                [::h/live value-type
-                 (fn [type]
-                   (if (= type :not-set)
-                     (h/html [:span ""])
-                     (ui/editor-widget-for
-                      type ::ui/empty
-                      (fn [to]
-                        (rerender!)
-                        (update-doc! xtdb-node id
-                                     (ui/parse-edn (p/current-value attr-name))
-                                     to)))))]]])))))])))
+             (ui/input-any on-change! ::ui/empty)))))])))
 
 (declare render-doc-data doc-source)
 
