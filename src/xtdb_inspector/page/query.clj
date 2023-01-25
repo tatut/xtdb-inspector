@@ -235,7 +235,7 @@
              :keys [id name]
              :where [[?e :xtdb-inspector.saved-query/name ?n]]}))
 
-(defn save-query! [xtdb-node name query]
+(defn save-query! [xtdb-node in-args name query]
   (when (and (not (str/blank? name))
              (not (str/blank? query)))
     (let [existing-query-id (ffirst
@@ -248,9 +248,10 @@
        xtdb-node
        [[::xt/put {:xt/id (or existing-query-id (java.util.UUID/randomUUID))
                    :xtdb-inspector.saved-query/name name
-                   :xtdb-inspector.saved-query/query query}]]))))
+                   :xtdb-inspector.saved-query/query query
+                   :xtdb-inspector.saved-query/in-args in-args}]]))))
 
-(defn saved-queries-ui [xtdb-node]
+(defn saved-queries-ui [xtdb-node state]
   (let [[query load-query!] (source/use-state nil)
         query-source (source/computed
                       #(when-let [q (some->> %
@@ -269,7 +270,8 @@
         [:div.input-group.input-group-sm
          [:input#save-query-as.input.input-bordered.input-sm {:placeholder "Save query as"}]
          [:button.btn.btn-square.btn-sm
-          {:on-click (js/js (partial save-query! xtdb-node)
+          {:on-click (js/js (partial save-query! xtdb-node
+                                     (:in-args (state-val state)))
                             (js/input-value "save-query-as")
                             "editor.getDoc().getValue()")}
           "Save"]]]
@@ -359,7 +361,7 @@
          "editor.on('change', _=> document.getElementById('validateq').click());")]
        [:button#validateq.hidden {:on-click on-change!}]]
 
-      (saved-queries-ui xtdb-node)
+      (saved-queries-ui xtdb-node state)
       [::h/live (source/c= (select-keys %src [:error? :error-message]))
        (fn [{:keys [error? error-message] :as f}]
          (h/html
