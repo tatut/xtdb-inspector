@@ -92,7 +92,17 @@
                :xtdb-inspector.saved-query/name "users with name"
                :xtdb-inspector.saved-query/query
                (str "{:find [?u (pull ?u [:first-name :last-name])]\n"
-                    " :where [[?u :first-name]]}")}]])
+                    " :where [[?u :first-name]]}")}]
+
+    [::xt/put {:xt/id (java.util.UUID/randomUUID)
+               :xtdb-inspector.saved-query/name "born in 2000s"
+               :xtdb-inspector.saved-query/query
+               (str "{:find [?u (pull ?u [:first-name :last-name :date-of-birth])]\n"
+                    " :where [[?u :first-name]\n"
+                    "         [?u :date-of-birth dob]\n"
+                    "         [(>= dob date)]]\n"
+                    " :in [date]}")
+               :xtdb-inspector.saved-query/in-args {'date (java.time.LocalDate/of 2000 1 1)}}]])
 
   ;; Insert a dashboard
   (xt/submit-tx

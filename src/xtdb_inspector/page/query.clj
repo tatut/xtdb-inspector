@@ -253,14 +253,10 @@
 
 (defn saved-queries-ui [xtdb-node state]
   (let [[query load-query!] (source/use-state nil)
-        query-source (source/computed
-                      #(when-let [q (some->> %
-                                             (java.util.UUID/fromString)
-                                             (xt/entity (xt/db xtdb-node)))]
-                         (str "editor.getDoc().setValue("
-                              (pr-str (:xtdb-inspector.saved-query/query q))
-                              ")"))
-                      query)]
+        query-source
+        (source/computed
+         #(str "window.location.search='?query='+encodeURIComponent('" % "')")
+         query)]
     (h/html
      [:div
       (js/eval-js-from-source query-source)
@@ -270,8 +266,10 @@
         [:div.input-group.input-group-sm
          [:input#save-query-as.input.input-bordered.input-sm {:placeholder "Save query as"}]
          [:button.btn.btn-square.btn-sm
-          {:on-click (js/js (partial save-query! xtdb-node
-                                     (:in-args (state-val state)))
+          {:on-click (js/js (fn [name query-text]
+                              (save-query! xtdb-node
+                                           (:in-args (state-val state))
+                                           name query-text))
                             (js/input-value "save-query-as")
                             "editor.getDoc().getValue()")}
           "Save"]]]
@@ -283,9 +281,8 @@
             {:name "saved-query"
              :on-change (js/js load-query! js/change-value)}
             [:option {:disabled true :selected true} "Load saved query"]
-            [::h/for [{:keys [id name]} queries
-                      :let [id (str id)]]
-             [:option {:value id} name]]]))]]])))
+            [::h/for [{:keys [name]} queries]
+             [:option {:value name} name]]]))]]])))
 
 (defn- saved-query-by-name [db name]
   (ffirst
@@ -316,11 +313,12 @@
 
 
 (defn render [{:keys [xtdb-node request]}]
-  (let [{:keys [query-text in-args]}
+  (def *r request)
+  (let [{:keys [query-text in-args] :as foo}
         (or
-         (some-> request :params :query
+         (some-> request :params (get "query")
                  (as-> n (saved-query-by-name (xt/db xtdb-node) n))
-                 (set/rename-keys {:xtdb-inspector.saved-query/name :query-text
+                 (set/rename-keys {:xtdb-inspector.saved-query/query :query-text
                                    :xtdb-inspector.saved-query/in-args :in-args}))
          @last-query)
 
